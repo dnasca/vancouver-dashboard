@@ -309,6 +309,17 @@
   }
   @media (max-width:900px){ #insight{width:86vw;} }
 
+  /* loading chip */
+  #load-chip{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:1050;
+    background:var(--panel); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border:1px solid var(--stroke); border-radius:999px; padding:8px 18px 8px 14px;
+    font-size:.8em; color:var(--ink); display:none; align-items:center; gap:9px; box-shadow:var(--shadow);
+  }
+  #load-chip .spin{width:14px; height:14px; border-radius:50%; border:2px solid var(--stroke2);
+    border-top-color:var(--accent); animation:chipSpin .8s linear infinite;}
+  @keyframes chipSpin{to{transform:rotate(360deg)}}
+
   /* download progress */
   #dl-progress{
     position:absolute; bottom:70px; left:14px; z-index:1100; width:238px; display:none;
@@ -397,6 +408,7 @@
   <button class="btn" id="bm-sat">Satellite</button>
 </div>
 <div id="badge" onclick="document.getElementById('modal-bg').style.display='flex'">Built with <b>Claude</b></div>
+<div id="load-chip"><span class="spin"></span><span id="load-txt">Loading…</span></div>
 <div id="toast"></div>
 
 <button id="insight-tab" title="Open insights for this view">📊<span class="cnt" id="ins-cnt" style="display:none">0</span></button>
@@ -625,6 +637,8 @@ const crimeColors = {
   'Assault, Aggravated':'#6b6bd6','Violate NCO':'#3caf99','Other':'#f789d8'};
 
 function circle(color, r=6){ return {radius:r, color:'#ffffff', weight:1, fillColor:color, fillOpacity:.85}; }
+/* dots shrink to a density texture when zoomed out, grow back up close */
+function zr(){ const z=map.getZoom(); return z>=16?6 : z>=15?5 : z>=14?4 : 2.6; }
 
 const LAYERS = [
   /* ---------- Safety ---------- */
@@ -634,7 +648,9 @@ const LAYERS = [
     whereFn: l => `year=${l.controlValue||'2024'}`,
     fields:'reportdate,year,month,dayname,offensenibrscodenameabbreviated,offensenibrsgroup,offensenibrscrimeagainst,reportcasestatus,beat_gis',
     point:(f)=>{ const t=f.properties.offensenibrscodenameabbreviated;
-      return circle(crimeColors[t]||'#aaaaaa'); },
+      const st=circle(crimeColors[t]||'#aaaaaa', zr());
+      if(map.getZoom()<14){ st.weight=0; st.fillOpacity=.6; }
+      return st; },
     popup:(p)=>buildPopup('Crime: '+(p.offensenibrscodenameabbreviated||'Unknown'), p, [
       ['reportdate','Reported'],['offensenibrsgroup','NIBRS group'],
       ['offensenibrscrimeagainst','Crime against'],['reportcasestatus','Case status'],
@@ -642,7 +658,9 @@ const LAYERS = [
 
   { id:'collisions', group:'Safety', label:'Traffic collisions (points)', color:'#ffb020',
     kind:'arcgis', url:`${CLARK}/Collisions/MapServer/0`, bbox:true, minZoom:14, pages:2,
-    point:()=>circle('#ffb020',5),
+    point:()=>{ const st=circle('#ffb020', zr());
+      if(map.getZoom()<14){ st.weight=0; st.fillOpacity=.6; }
+      return st; },
     popup:(p)=>buildPopup('Traffic collision', p) },
 
   { id:'collheat', group:'Safety', label:'Accident hotspot heatmap', color:'#ff5c5c',
@@ -804,6 +822,7 @@ for(const cfg of LAYERS){
     state[cfg.id].on = e.target.checked;
     if(cfg.id==='parcels') $('val-legend').style.display = e.target.checked?'block':'none';
     if(e.target.checked) refreshLayer(cfg); else hideLayer(cfg);
+    if(cfg.id==='crime') ensureCityLimits(e.target.checked);
     updateInsights();
   });
   const ec=$(`ec-${cfg.id}`);
@@ -864,19 +883,19 @@ function firstCoord(g){
 /* continuous value → color, log scale: $100k=blue … $2M+=red */
 /* viridis: perceptually uniform, nothing reads as "bad" — low=deep violet, high=luminous gold */
 const VAL_STOPS=[[0,[68,1,84]],[.25,[59,82,139]],[.5,[33,145,140]],[.75,[94,201,98]],[1,[253,231,37]]];
-function valColor(v){
-  if(!v||v<=0) return '#5b6b7d';
+function valColorRGB(v){
+  if(!v||v<=0) return [91,107,125];
   const t=Math.max(0,Math.min(1,(Math.log10(v)-5)/1.301));   // 1e5→0, 2e6→1
   for(let i=1;i<VAL_STOPS.length;i++){
     if(t<=VAL_STOPS[i][0]){
       const [t0,c0]=VAL_STOPS[i-1],[t1,c1]=VAL_STOPS[i];
       const f=(t-t0)/(t1-t0);
-      const c=c0.map((a,k)=>Math.round(a+(c1[k]-a)*f));
-      return `rgb(${c[0]},${c[1]},${c[2]})`;
+      return c0.map((a,k)=>Math.round(a+(c1[k]-a)*f));
     }
   }
-  return 'rgb(215,25,28)';
+  return [253,231,37];
 }
+function valColor(v){ const c=valColorRGB(v); return `rgb(${c[0]},${c[1]},${c[2]})`; }
 
 /* tiny IndexedDB key-value store (survives closing the page) */
 function idbOpen(){ return new Promise((res,rej)=>{
@@ -943,7 +962,10 @@ const ValueSurface = L.Layer.extend({
   _hide(){ if(this._c) this._c.style.opacity=0; },
   _rd(){
     if(!this._m || !PARCELS_FULL) return;
-    const m=this._m, sz=m.getSize(), cp=this._cellPx;
+    const m=this._m, sz=m.getSize(), z=m.getZoom();
+    /* bigger cells as parcels thin out per pixel, so the field stays continuous */
+    const cp = z<=12?9 : z<=13?12 : z<=14?16 : 22;
+    this._cellPx=cp;
     this._c.width=sz.x; this._c.height=sz.y;
     L.DomUtil.setPosition(this._c, m.containerPointToLayerPoint([0,0]));
     const b=m.getBounds(), w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
@@ -960,15 +982,25 @@ const ValueSurface = L.Layer.extend({
       const k=(y/cp|0)*nx+(x/cp|0);
       sum[k]+=v; cnt[k]++;
     }
+    /* paint 1px per cell, then upscale with bilinear smoothing:
+       a continuous value field instead of brick artifacts */
+    const off=document.createElement('canvas'); off.width=nx; off.height=ny;
+    const octx=off.getContext('2d');
+    const img=octx.createImageData(nx,ny);
+    for(let k=0;k<nx*ny;k++){
+      if(!cnt[k]) continue;
+      const c=valColorRGB(sum[k]/cnt[k]);
+      const o=k*4;
+      img.data[o]=c[0]; img.data[o+1]=c[1]; img.data[o+2]=c[2];
+      img.data[o+3]=Math.min(1, cnt[k]/2)*210;   // sparse cells fade out gently
+    }
+    octx.putImageData(img,0,0);
     const ctx=this._c.getContext('2d');
     ctx.clearRect(0,0,sz.x,sz.y);
-    ctx.globalAlpha=.58;
-    for(let j=0;j<ny;j++) for(let i2=0;i2<nx;i2++){
-      const k=j*nx+i2;
-      if(!cnt[k]) continue;
-      ctx.fillStyle=valColor(sum[k]/cnt[k]);
-      ctx.fillRect(i2*cp, j*cp, cp, cp);
-    }
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.globalAlpha=.75;
+    ctx.drawImage(off, 0,0,nx,ny, 0,0, nx*cp, ny*cp);
     this._nx=nx; this._sum=sum; this._cnt=cnt;
     this._c.style.opacity=1;
   }
@@ -1029,16 +1061,15 @@ async function refreshLayer(cfg, force){
     return;                                   // served from cache — no request
   }
 
-  /* view band changed → strip the stale visual immediately (no ghost blobs) */
-  if(s.layer && s.cache && s.cache.key!==key && map.hasLayer(s.layer)){
-    map.removeLayer(s.layer);
-  }
+  /* stale-while-revalidate: the previous view stays visible while fresh
+     data loads (the loading chip tells the user what's happening) */
 
   if(s.ctrl) s.ctrl.abort();
   s.ctrl = new AbortController();
   const sig = s.ctrl.signal;
   const myReq = ++s.seq;                      // guard against stale JSONP responses
   setStat(cfg.id,'loading…');
+  LOADING.set(cfg.id, cfg.label); chipUpdate();
 
   try{
     let newLayer, stat;
@@ -1215,6 +1246,17 @@ async function refreshLayer(cfg, force){
     setStat(cfg.id,'error',true);
     toast(`Couldn't load "${cfg.label}" — the data server may be busy. Try again in a moment.`);
   }
+  finally{
+    if(s.seq===myReq){ LOADING.delete(cfg.id); chipUpdate(); }
+  }
+}
+
+const LOADING=new Map();
+function chipUpdate(){
+  const el=$('load-chip');
+  if(!LOADING.size){ el.style.display='none'; return; }
+  $('load-txt').textContent='Loading '+[...LOADING.values()].slice(0,3).join(', ')+'…';
+  el.style.display='flex';
 }
 
 /* re-evaluate layers when the map stops moving (cache makes this cheap) */
@@ -1323,7 +1365,7 @@ function insCrimeCard(b){
     <div class="ins-big">${fmtNum(total)}</div>
     <div class="ins-sub">reported incidents in view</div>
     <div style="margin-top:8px">${rows}</div>
-    <div class="ins-note">VPD data · loaded area only — pan to update</div>
+    <div class="ins-note">VPD · city limits only (dashed line) · pan to update</div>
   </div>`;
 }
 
@@ -1359,6 +1401,31 @@ function updateInsights(){
 }
 $('insight-tab').onclick=()=>{ insOpen=true; $('insight').classList.add('open'); $('insight-tab').style.display='none'; updateInsights(); };
 $('ins-close').onclick=()=>{ insOpen=false; $('insight').classList.remove('open'); $('insight-tab').style.display='block'; };
+
+/* keep dot sizes in step with zoom without refetching */
+map.on('zoomend', ()=>{
+  const w=map.getZoom()>=14?1:0, op=map.getZoom()>=14?.85:.6;
+  for(const id of ['crime','collisions']){
+    const s=state[id];
+    if(s && s.on && s.layer && s.layer.eachLayer)
+      s.layer.eachLayer(mk=>{ if(mk.setRadius){ mk.setRadius(zr()); mk.setStyle({weight:w, fillOpacity:op}); } });
+  }
+});
+
+/* dashed city-limits line while crime is on: VPD data ends at the boundary,
+   so the map shows WHY the dots stop instead of looking half-loaded */
+let CITY_LIMITS=null;
+async function ensureCityLimits(show){
+  if(!show){ if(CITY_LIMITS && map.hasLayer(CITY_LIMITS)) map.removeLayer(CITY_LIMITS); return; }
+  if(!CITY_LIMITS){
+    try{
+      const gj=await fetchArcGIS(`${CLARK}/CityBoundary/MapServer/0`,{maxOffset:0.0004});
+      CITY_LIMITS=L.geoJSON(gj,{style:{color:'#9db4cc', weight:1.6, dashArray:'6 7', fill:false, opacity:.65},
+        onEachFeature:(f,l)=>l.bindPopup('<div class="pp-title">City limits</div><div style="font-size:.85em">VPD crime data covers the city of Vancouver only — outside this line, no dots doesn\'t mean no crime.</div>')});
+    }catch(e){ return; }
+  }
+  if(state.crime && state.crime.on && !map.hasLayer(CITY_LIMITS)) CITY_LIMITS.addTo(map);
+}
 
 /* ---------------- weather (NWS) ---------------- */
 (async function weather(){
