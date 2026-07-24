@@ -673,7 +673,7 @@ const LAYERS = [
 
   /* ---------- Property & Land ---------- */
   { id:'parcels', group:'Property & Land', label:'Land & property values', color:'#3ecf8e',
-    kind:'parcels', url:`${CLARK}/TaxlotsPublic/MapServer/0`,
+    kind:'parcels', url:`${CLARK}/TaxlotsPublic/MapServer/0`, canvasRender:true,
     extraControl:{type:'select', label:'Show',
       options:['All values','Under $250k','$250k–$500k','$500k–$1M','Over $1M']},
     fields:'SitusAddrs,MktLandVal,MktBldgVal,MktTotVal,TAXTOTVAL,TaxAmount,SaleDate,SaleAmount,BldgYrBlt,BLDGSQFT,PropertyUseClass,ZoneDesc,AcctTypeDesc',
@@ -964,10 +964,6 @@ const ValueSurface = L.Layer.extend({
     if(!this._m || !PARCELS_FULL) return;
     const m=this._m, sz=m.getSize();
     const z=Math.round(m.getZoom());
-    /* world-anchored grid: cells live at fixed geographic positions, so the
-       blocky pattern is rock-stable while panning — only the viewport moves.
-       Crisp cells, absolute colors. */
-    const cs = z<=13?10 : z===14?14 : 20;     // cell px at this zoom
     const scale = 256*Math.pow(2,z);
     const wpx = lo => (lo+180)/360*scale;
     const wpy = la => (1 - Math.log(Math.tan(Math.PI/4 + la*Math.PI/360))/Math.PI)/2*scale;
@@ -975,36 +971,78 @@ const ValueSurface = L.Layer.extend({
     L.DomUtil.setPosition(this._c, m.containerPointToLayerPoint([0,0]));
     const b0=m.getBounds(), b=b0.pad(0.05);
     const w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
-    const cells=new Map();                    // numeric key: kx*4194304+ky
-    const {lon,lat,val}=PARCELS_FULL, opt=this._opt;
-    for(let i=0;i<val.length;i++){
-      const lo=lon[i], la=lat[i], v=val[i];
-      if(lo<w||lo>e||la<s||la>n) continue;
-      if(!matchVal(opt,v)) continue;
-      const k=((wpx(lo)/cs)|0)*4194304 + ((wpy(la)/cs)|0);
-      const c=cells.get(k);
-      if(c){ c[0]+=v; c[1]++; } else cells.set(k,[v,1]);
-    }
     const tlX=wpx(b0.getWest()), tlY=wpy(b0.getNorth());
     const ctx=this._c.getContext('2d');
     ctx.clearRect(0,0,sz.x,sz.y);
-    ctx.globalAlpha=.62;
-    for(const [k,c] of cells){
-      const kx=(k/4194304)|0, ky=k%4194304;
-      ctx.fillStyle=valColor(c[0]/c[1]);
-      ctx.fillRect(kx*cs-tlX, ky*cs-tlY, cs, cs);
+    const {lon,lat,val}=PARCELS_FULL, opt=this._opt;
+    this._z=z;
+    this._mode = z<=12 ? 'grid' : 'points';
+
+    if(this._mode==='grid'){
+      /* far out: world-anchored aggregate blocks — stable, descriptive */
+      const cs=12; this._cs=cs;
+      const cells=new Map();                  // numeric key: kx*4194304+ky
+      for(let i=0;i<val.length;i++){
+        const lo=lon[i], la=lat[i], v=val[i];
+        if(lo<w||lo>e||la<s||la>n) continue;
+        if(!matchVal(opt,v)) continue;
+        const k=((wpx(lo)/cs)|0)*4194304 + ((wpy(la)/cs)|0);
+        const c=cells.get(k);
+        if(c){ c[0]+=v; c[1]++; } else cells.set(k,[v,1]);
+      }
+      ctx.globalAlpha=.62;
+      for(const [k,c] of cells){
+        const kx=(k/4194304)|0, ky=k%4194304;
+        ctx.fillStyle=valColor(c[0]/c[1]);
+        ctx.fillRect(kx*cs-tlX, ky*cs-tlY, cs, cs);
+      }
+      this._cells=cells;
+    } else {
+      /* mid zoom: pointillism — one crisp square per REAL parcel at its true
+         position. Roads appear as natural gaps; an expensive lot is a small
+         precise gold dot, not a noisy block. Instant, no server. */
+      const ps = z===13?3 : z===14?5 : 7; this._ps=ps;
+      const h=ps/2;
+      ctx.globalAlpha=.8;
+      for(let i=0;i<val.length;i++){
+        const lo=lon[i], la=lat[i], v=val[i];
+        if(lo<w||lo>e||la<s||la>n) continue;
+        if(!matchVal(opt,v)) continue;
+        ctx.fillStyle=valColor(v);
+        ctx.fillRect(wpx(lo)-tlX-h, wpy(la)-tlY-h, ps, ps);
+      }
+      this._cells=null;
     }
-    this._cells=cells; this._cs=cs; this._z=z;
     this._c.style.opacity=1;
   }
 });
 const VS = new ValueSurface();
 map.on('click', e=>{
-  if(!map.hasLayer(VS) || !VS._cells) return;
+  if(!map.hasLayer(VS)) return;
   const scale=256*Math.pow(2,VS._z);
-  const kx=((e.latlng.lng+180)/360*scale/VS._cs)|0;
-  const ky=((1 - Math.log(Math.tan(Math.PI/4 + e.latlng.lat*Math.PI/360))/Math.PI)/2*scale/VS._cs)|0;
-  const c=VS._cells.get(kx*4194304+ky);
+  const px=(e.latlng.lng+180)/360*scale;
+  const py=(1 - Math.log(Math.tan(Math.PI/4 + e.latlng.lat*Math.PI/360))/Math.PI)/2*scale;
+  if(VS._mode==='points' && PARCELS_FULL){
+    /* nearest parcel within ~10px */
+    const {lon,lat,val}=PARCELS_FULL;
+    let best=-1, bd=100;
+    for(let i=0;i<val.length;i++){
+      const dx=(lon[i]+180)/360*scale - px;
+      if(dx>10||dx<-10) continue;
+      const dy=(1 - Math.log(Math.tan(Math.PI/4 + lat[i]*Math.PI/360))/Math.PI)/2*scale - py;
+      if(dy>10||dy<-10) continue;
+      const d=dx*dx+dy*dy;
+      if(d<bd){ bd=d; best=i; }
+    }
+    if(best<0) return;
+    L.popup().setLatLng(e.latlng).setContent(
+      `<div class="pp-title">Parcel</div>
+       <div class="pp-row"><span class="k">Market value</span><span>${fmtMoney(PARCELS_FULL.val[best])}</span></div>
+       <div class="pp-row"><span class="k">Tip</span><span>zoom in for full details</span></div>`).openOn(map);
+    return;
+  }
+  if(!VS._cells) return;
+  const c=VS._cells.get(((px/VS._cs)|0)*4194304 + ((py/VS._cs)|0));
   if(!c) return;
   L.popup().setLatLng(e.latlng).setContent(
     `<div class="pp-title">Area average</div>
@@ -1014,6 +1052,7 @@ map.on('click', e=>{
 
 function makeGeoJsonLayer(cfg, gj){
   return L.geoJSON(gj,{
+    ...(cfg.canvasRender ? {renderer:L.canvas({padding:0.3})} : {}),
     pointToLayer:(f,latlng)=> L.circleMarker(latlng, cfg.point?cfg.point(f):circle(cfg.color)),
     style:(f)=>{
       const t=f.geometry&&f.geometry.type;
@@ -1038,7 +1077,7 @@ async function refreshLayer(cfg, force){
      With the county download: fine canvas surface at all zooms until parcel
      outlines take over at z16. Without: tract choropleth then server grid. */
   const band = cfg.kind==='parcels'
-    ? (z>=16 ? 'poly' : (PARCELS_FULL ? 'surface' : (z<=12?'tract':'grid')))
+    ? (z>=15 ? 'poly' : (PARCELS_FULL ? 'surface' : (z<=12?'tract':'grid')))
     : '-';
   const key = (cfg.controlValue||'') + '|' + band;
   const view = map.getBounds();
@@ -1046,7 +1085,7 @@ async function refreshLayer(cfg, force){
                   (cfg.kind==='parcels' && (band==='grid'||band==='poly'));
 
   if(cfg.kind==='parcels') $('vl-band').textContent =
-    band==='surface'?'County surface · every parcel, offline — zoom for lots':
+    band==='surface'?(z<=12?'Neighborhood blocks · stable county-wide field':'Parcel pointillism · one square per lot — zoom for outlines'):
     band==='tract'?'Neighborhood view · avg per census tract':
     band==='grid'?'Block view · avg per cell — zoom for parcels':'Parcel view · individual lots';
 
@@ -1191,15 +1230,15 @@ async function refreshLayer(cfg, force){
 
       else { /* band==='poly' — real parcel outlines */
         const feats=[];
-        for(let off=0; off<10000; off+=2000){
+        for(let off=0; off<16000; off+=2000){
           const gj = await fetchArcGIS(TAXLOTS,{where, fields:cfg.fields,
             bounds:fetchBounds, limit:2000, offset:off,
-            maxOffset: z>=17?0:0.00004, signal:sig});
+            maxOffset: z>=17?0 : z>=16?0.00004 : 0.0001, signal:sig});
           feats.push(...(gj.features||[]));
           if((gj.features||[]).length<2000) break;
         }
         newLayer = makeGeoJsonLayer(cfg, {type:'FeatureCollection',features:feats});
-        stat = fmtNum(feats.length)+(feats.length>=10000?'+':'');
+        stat = fmtNum(feats.length)+(feats.length>=16000?'+':'');
       }
     }
     else if(cfg.kind==='overpass'){
