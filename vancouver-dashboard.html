@@ -962,59 +962,54 @@ const ValueSurface = L.Layer.extend({
   _hide(){ if(this._c) this._c.style.opacity=0; },
   _rd(){
     if(!this._m || !PARCELS_FULL) return;
-    const m=this._m, sz=m.getSize(), z=m.getZoom();
-    /* bigger cells as parcels thin out per pixel, so the field stays continuous */
-    const cp = z<=12?9 : z<=13?12 : z<=14?16 : 22;
-    this._cellPx=cp;
+    const m=this._m, sz=m.getSize();
+    const z=Math.round(m.getZoom());
+    /* world-anchored grid: cells live at fixed geographic positions, so the
+       blocky pattern is rock-stable while panning — only the viewport moves.
+       Crisp cells, absolute colors. */
+    const cs = z<=13?10 : z===14?14 : 20;     // cell px at this zoom
+    const scale = 256*Math.pow(2,z);
+    const wpx = lo => (lo+180)/360*scale;
+    const wpy = la => (1 - Math.log(Math.tan(Math.PI/4 + la*Math.PI/360))/Math.PI)/2*scale;
     this._c.width=sz.x; this._c.height=sz.y;
     L.DomUtil.setPosition(this._c, m.containerPointToLayerPoint([0,0]));
-    const b=m.getBounds(), w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
-    const mrc=la=>Math.log(Math.tan(Math.PI/4 + la*Math.PI/360));
-    const mN=mrc(n), mS=mrc(s);
-    const nx=Math.ceil(sz.x/cp), ny=Math.ceil(sz.y/cp);
-    const sum=new Float64Array(nx*ny), cnt=new Uint32Array(nx*ny);
+    const b0=m.getBounds(), b=b0.pad(0.05);
+    const w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
+    const cells=new Map();                    // numeric key: kx*4194304+ky
     const {lon,lat,val}=PARCELS_FULL, opt=this._opt;
     for(let i=0;i<val.length;i++){
       const lo=lon[i], la=lat[i], v=val[i];
       if(lo<w||lo>e||la<s||la>n) continue;
       if(!matchVal(opt,v)) continue;
-      const x=((lo-w)/(e-w))*sz.x, y=((mN-mrc(la))/(mN-mS))*sz.y;
-      const k=(y/cp|0)*nx+(x/cp|0);
-      sum[k]+=v; cnt[k]++;
+      const k=((wpx(lo)/cs)|0)*4194304 + ((wpy(la)/cs)|0);
+      const c=cells.get(k);
+      if(c){ c[0]+=v; c[1]++; } else cells.set(k,[v,1]);
     }
-    /* paint 1px per cell, then upscale with bilinear smoothing:
-       a continuous value field instead of brick artifacts */
-    const off=document.createElement('canvas'); off.width=nx; off.height=ny;
-    const octx=off.getContext('2d');
-    const img=octx.createImageData(nx,ny);
-    for(let k=0;k<nx*ny;k++){
-      if(!cnt[k]) continue;
-      const c=valColorRGB(sum[k]/cnt[k]);
-      const o=k*4;
-      img.data[o]=c[0]; img.data[o+1]=c[1]; img.data[o+2]=c[2];
-      img.data[o+3]=Math.min(1, cnt[k]/2)*210;   // sparse cells fade out gently
-    }
-    octx.putImageData(img,0,0);
+    const tlX=wpx(b0.getWest()), tlY=wpy(b0.getNorth());
     const ctx=this._c.getContext('2d');
     ctx.clearRect(0,0,sz.x,sz.y);
-    ctx.imageSmoothingEnabled=true;
-    ctx.imageSmoothingQuality='high';
-    ctx.globalAlpha=.75;
-    ctx.drawImage(off, 0,0,nx,ny, 0,0, nx*cp, ny*cp);
-    this._nx=nx; this._sum=sum; this._cnt=cnt;
+    ctx.globalAlpha=.62;
+    for(const [k,c] of cells){
+      const kx=(k/4194304)|0, ky=k%4194304;
+      ctx.fillStyle=valColor(c[0]/c[1]);
+      ctx.fillRect(kx*cs-tlX, ky*cs-tlY, cs, cs);
+    }
+    this._cells=cells; this._cs=cs; this._z=z;
     this._c.style.opacity=1;
   }
 });
 const VS = new ValueSurface();
 map.on('click', e=>{
-  if(!map.hasLayer(VS) || !VS._cnt) return;
-  const p=map.latLngToContainerPoint(e.latlng), cp=VS._cellPx;
-  const k=(p.y/cp|0)*VS._nx+(p.x/cp|0);
-  if(!VS._cnt[k]) return;
+  if(!map.hasLayer(VS) || !VS._cells) return;
+  const scale=256*Math.pow(2,VS._z);
+  const kx=((e.latlng.lng+180)/360*scale/VS._cs)|0;
+  const ky=((1 - Math.log(Math.tan(Math.PI/4 + e.latlng.lat*Math.PI/360))/Math.PI)/2*scale/VS._cs)|0;
+  const c=VS._cells.get(kx*4194304+ky);
+  if(!c) return;
   L.popup().setLatLng(e.latlng).setContent(
     `<div class="pp-title">Area average</div>
-     <div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(VS._sum[k]/VS._cnt[k])}</span></div>
-     <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(VS._cnt[k])}</span></div>`).openOn(map);
+     <div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(c[0]/c[1])}</span></div>
+     <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(c[1])}</span></div>`).openOn(map);
 });
 
 function makeGeoJsonLayer(cfg, gj){
