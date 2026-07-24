@@ -37,14 +37,14 @@
 
   /* ============ sidebar shell ============ */
   #sidebar{
-    width:352px; min-width:352px; display:flex; flex-direction:column; z-index:1001;
-    background:linear-gradient(180deg, rgba(19,34,57,.88), rgba(10,19,34,.92));
+    position:absolute; top:14px; left:14px; z-index:1300;
+    width:336px; max-width:calc(100vw - 28px);
+    display:flex; flex-direction:column;
+    background:linear-gradient(180deg, rgba(19,34,57,.92), rgba(10,19,34,.96));
     backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
-    border-right:1px solid var(--stroke);
-    box-shadow:10px 0 36px rgba(2,8,20,.5);
-    transition:margin-left .25s var(--ease);
+    border:1px solid var(--stroke); border-radius:17px;
+    box-shadow:var(--shadow);
   }
-  #sidebar.hidden{margin-left:-352px;}
   #sb-head{
     padding:18px 18px 14px; position:relative;
     background:linear-gradient(180deg, rgba(77,163,255,.09), transparent);
@@ -80,19 +80,27 @@
   }
   #search-box::placeholder{color:var(--muted);}
   #search-box:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(77,163,255,.22);}
-  #sb-body{flex:1; overflow-y:auto; padding:8px 14px 90px; scrollbar-width:thin; scrollbar-color:rgba(126,178,255,.3) transparent;}
+  #sb-body{padding:2px 14px 14px;}
   #sb-body::-webkit-scrollbar{width:8px;}
   #sb-body::-webkit-scrollbar-thumb{background:rgba(126,178,255,.25); border-radius:4px;}
   #sb-body::-webkit-scrollbar-thumb:hover{background:rgba(126,178,255,.45);}
 
   /* ============ weather hero ============ */
   #weather{
-    --wxg:linear-gradient(140deg, rgba(77,163,255,.22), rgba(20,40,70,.08));
-    position:relative; overflow:hidden;
+    --wxg:linear-gradient(140deg, rgba(77,163,255,.20), rgba(20,40,70,.08));
+    position:relative; overflow:hidden; cursor:pointer;
     background:var(--wxg), linear-gradient(160deg,#17324f,#0e1f36);
-    border:1px solid var(--stroke); border-radius:16px; padding:16px; margin:10px 2px 16px;
-    box-shadow:var(--shadow); transition:background .6s;
+    border:1px solid var(--stroke); border-radius:13px; padding:9px 12px; margin:8px 0 10px;
+    box-shadow:0 4px 14px rgba(2,8,20,.3); transition:background .6s, border-color .18s;
   }
+  #weather:hover{border-color:var(--stroke2);}
+  #weather .wx-temp{font-size:1.5em!important;}
+  #weather .wx-desc{display:none;}
+  #weather #wx-fore{display:none;}
+  #weather.expanded{padding:14px 16px; border-radius:16px; box-shadow:var(--shadow);}
+  #weather.expanded .wx-temp{font-size:2.4em!important;}
+  #weather.expanded .wx-desc{display:block;}
+  #weather.expanded #wx-fore{display:flex;}
   #weather::before{content:""; position:absolute; inset:0; pointer-events:none;
     background:radial-gradient(420px 190px at 92% -25%, rgba(200,228,255,.20), transparent 65%);}
   #weather[data-wx="clear"]{--wxg:linear-gradient(140deg, rgba(255,186,64,.30), rgba(255,116,64,.10));}
@@ -121,8 +129,17 @@
   .wx-day b{display:block; font-size:1.3em; margin:3px 0; color:var(--ink);}
 
   /* ============ layer groups ============ */
-  .group{margin-bottom:8px; border:1px solid transparent; border-radius:13px; transition:background .2s var(--ease), border-color .2s var(--ease);}
-  .group.open{background:rgba(11,21,37,.55); border-color:var(--stroke);}
+  #groups{position:relative;}
+  .group{
+    position:absolute; top:6px; left:0; width:320px; max-width:calc(100vw - 42px);
+    border:1px solid var(--stroke); border-radius:14px;
+    background:linear-gradient(180deg, rgba(19,34,57,.97), rgba(10,19,34,.99));
+    backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
+    box-shadow:var(--shadow);
+    max-height:0; overflow:hidden; opacity:0; pointer-events:none; transform:translateY(-6px);
+    transition:max-height .3s var(--ease), opacity .2s var(--ease), transform .25s var(--ease);
+  }
+  .group.open{max-height:min(70vh,560px); opacity:1; pointer-events:auto; transform:translateY(0); overflow-y:auto;}
   .group-h{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     min-height:46px; padding:10px 12px; border-radius:12px; cursor:pointer; user-select:none;
@@ -168,6 +185,53 @@
   select.mini{background:rgba(9,17,30,.7); color:var(--ink); border:1px solid var(--stroke); border-radius:7px; padding:5px 8px; font-size:.8em; transition:border-color .18s;}
   select.mini:hover{border-color:var(--stroke2);}
 
+  /* ============ circular group nav ============ */
+  #group-nav{display:flex; gap:10px; padding:4px 0 2px;}
+  .circle-btn{
+    position:relative; width:50px; height:50px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:1.3em;
+    background:linear-gradient(180deg, rgba(52,84,128,.5), rgba(30,52,84,.5));
+    border:1px solid var(--stroke); cursor:pointer; color:var(--ink);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+    transition:border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease), background .18s var(--ease);
+  }
+  .circle-btn:hover{transform:translateY(-2px); border-color:var(--stroke2); box-shadow:var(--glow);}
+  .circle-btn.active{background:linear-gradient(180deg,#5aabff,#3d8fe4); border-color:var(--accent); box-shadow:0 0 18px rgba(77,163,255,.5);}
+  .circle-badge{
+    position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 4px;
+    border-radius:9px; background:var(--good); color:#04231a; font-size:.62em; font-weight:800;
+    display:none; align-items:center; justify-content:center; box-shadow:0 0 6px rgba(0,0,0,.4);
+  }
+  .circle-badge.show{display:flex;}
+
+  /* ============ crime coverage callout ============ */
+  #crime-badge{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:1000; display:none;
+    background:linear-gradient(180deg, rgba(255,176,32,.24), rgba(255,176,32,.09));
+    border:1px solid rgba(255,176,32,.55); color:var(--ink); border-radius:999px;
+    padding:9px 16px; font-size:.82em; font-weight:600; cursor:pointer;
+    box-shadow:0 0 16px rgba(255,176,32,.22), var(--shadow);
+    transition:transform .18s var(--ease);
+  }
+  #crime-badge:hover{transform:translateX(-50%) translateY(-1px);}
+  #crime-badge.show{display:block;}
+  #crime-info{
+    position:absolute; top:62px; left:50%; transform:translateX(-50%); z-index:1300;
+    width:360px; max-width:calc(100vw - 28px);
+    background:linear-gradient(180deg, rgba(19,34,57,.97), rgba(10,19,34,.99));
+    backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
+    border:1px solid var(--stroke); border-radius:15px; padding:16px 18px; box-shadow:var(--shadow);
+    max-height:0; overflow:hidden; opacity:0; pointer-events:none;
+    transition:max-height .3s var(--ease), opacity .2s var(--ease);
+  }
+  #crime-info.open{max-height:420px; opacity:1; pointer-events:auto;}
+  #crime-info .ci-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  #crime-info h3{font-size:.95em;}
+  #crime-info p{font-size:.82em; color:var(--muted); line-height:1.55; margin-top:9px;}
+  #crime-info p b{color:var(--ink);}
+  .ci-close{background:none; border:none; color:var(--muted); font-size:1.15em; cursor:pointer; padding:4px 8px; border-radius:6px;}
+  .ci-close:hover{background:var(--panel2); color:var(--ink);}
+
   /* ============ map & leaflet chrome ============ */
   #map{flex:1; height:100%; background:#0a1220;}
   .leaflet-container{font:inherit;}
@@ -200,15 +264,6 @@
     background:rgba(77,163,255,.9)!important; color:#04203c!important; font-weight:700; font-family:inherit;}
 
   /* floating map controls */
-  #sb-toggle{
-    position:absolute; top:14px; left:14px; z-index:1002;
-    background:var(--panel); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
-    border:1px solid var(--stroke); color:var(--ink); border-radius:12px;
-    min-height:44px; padding:9px 14px; cursor:pointer; font-size:.95em; font-weight:600;
-    box-shadow:var(--shadow); transition:left .25s var(--ease), border-color .18s, box-shadow .25s var(--ease);
-  }
-  #sb-toggle:hover{border-color:var(--stroke2); box-shadow:var(--glow), var(--shadow);}
-  body:has(#sidebar:not(.hidden)) #sb-toggle{left:366px;}
   #basemap-ctl{
     position:absolute; top:14px; right:14px; z-index:1000; display:flex; gap:4px;
     background:var(--panel); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
@@ -354,10 +409,9 @@
 
   /* ============ responsive & motion ============ */
   @media (max-width:720px){
-    #sidebar{position:absolute; height:100%; width:min(352px,88vw); min-width:0;
-      transition:transform .25s var(--ease); transform:translateX(0); box-shadow:14px 0 40px rgba(2,8,20,.65);}
-    #sidebar.hidden{margin-left:0; transform:translateX(-108%);}
-    body:has(#sidebar:not(.hidden)) #sb-toggle{left:calc(min(352px,88vw) + 10px);}
+    #sidebar{top:10px; left:10px; width:min(320px,calc(100vw - 20px));}
+    .circle-btn{width:44px; height:44px; font-size:1.15em;}
+    .group{width:min(300px, calc(100vw - 40px));}
     #val-legend{bottom:88px;}
   }
   @media (prefers-reduced-motion:reduce){
@@ -428,7 +482,7 @@
       <button class="btn" id="search-go">Go</button>
     </div>
     <div id="sb-body">
-      <div id="weather">
+      <div id="weather" title="Click to expand forecast">
         <div class="wx-now">
           <div class="wx-temp" id="wx-temp">--°</div>
           <div>
@@ -439,6 +493,12 @@
         <div id="wx-alerts"></div>
         <div id="wx-fore"></div>
       </div>
+      <div id="group-nav">
+        <button class="circle-btn" data-group="Safety" title="Safety">🛡️<span class="circle-badge"></span></button>
+        <button class="circle-btn" data-group="Property &amp; Land" title="Property &amp; Land">🏘️<span class="circle-badge"></span></button>
+        <button class="circle-btn" data-group="Getting Around" title="Getting Around">🚌<span class="circle-badge"></span></button>
+        <button class="circle-btn" data-group="Life &amp; Leisure" title="Life &amp; Leisure">🌳<span class="circle-badge"></span></button>
+      </div>
       <div id="groups"></div>
     </div>
   </div>
@@ -447,7 +507,14 @@
   <div id="dashboard"></div>
 </div>
 
-<button id="sb-toggle">☰ Layers</button>
+<div id="crime-badge">🛡️ Crime data: <b>City of Vancouver only</b></div>
+<div id="crime-info">
+  <div class="ci-head"><h3>🛡️ Crime data coverage</h3><button class="ci-close" id="crime-info-close">✕</button></div>
+  <p>These incident markers come from the <b>Vancouver Police Department</b> and cover only the city of Vancouver — the area inside the dashed boundary on the map.</p>
+  <p>The rest of Clark County (unincorporated areas, Camas, Battle Ground, Washougal, Ridgefield, La Center) is policed by the <b>Clark County Sheriff's Office</b> and other municipal departments. None currently publish an open, mappable incident feed, so no dots there means <i>no public data</i> — not necessarily no crime.</p>
+  <p style="font-style:italic;">We're tracking options for county-wide coverage. This map will be the first place it shows up if that changes.</p>
+</div>
+
 <div id="basemap-ctl">
   <button class="btn on" id="bm-street">Street</button>
   <button class="btn" id="bm-sat">Satellite</button>
@@ -836,7 +903,7 @@ const groupsEl = $('groups');
 const groupEls = {};
 for(const g of GROUP_ORDER){
   const div = document.createElement('div');
-  div.className='group'+(g==='Safety'?' open':'');
+  div.className='group';
   div.innerHTML = `<div class="group-h"><span>${GROUP_ICONS[g]||''} ${g}</span><span class="chev">▶</span></div><div class="group-items"><div class="gi-inner"></div></div>`;
   div.querySelector('.group-h').onclick = ()=>div.classList.toggle('open');
   groupsEl.appendChild(div);
@@ -1554,9 +1621,41 @@ function updateInsights(){
     drawHist(b);
   }
   if(currentMode==='dashboard') renderDashboard();
+  updateGroupBadges();
 }
 $('insight-tab').onclick=()=>{ insOpen=true; $('insight').classList.add('open'); $('insight-tab').style.display='none'; updateInsights(); };
 $('ins-close').onclick=()=>{ insOpen=false; $('insight').classList.remove('open'); $('insight-tab').style.display='block'; };
+
+/* ================= circular group nav =================
+   Click a circle to pop its group's flyout open (single flyout at a time —
+   opening one closes any other). Badges show how many of that group's
+   layers are currently on, so activity is visible even while closed. */
+document.querySelectorAll('#group-nav .circle-btn').forEach(btn=>{
+  const g = btn.dataset.group;
+  btn.addEventListener('click', ()=>{
+    const wrap = groupEls[g] && groupEls[g].closest('.group');
+    if(!wrap) return;
+    const wasOpen = wrap.classList.contains('open');
+    document.querySelectorAll('#groups .group.open').forEach(el=>el.classList.remove('open'));
+    document.querySelectorAll('#group-nav .circle-btn.active').forEach(el=>el.classList.remove('active'));
+    if(!wasOpen){ wrap.classList.add('open'); btn.classList.add('active'); }
+  });
+});
+function updateGroupBadges(){
+  document.querySelectorAll('#group-nav .circle-btn').forEach(btn=>{
+    const g = btn.dataset.group;
+    const on = LAYERS.filter(cfg=>cfg.group===g && state[cfg.id] && state[cfg.id].on).length;
+    const bd = btn.querySelector('.circle-badge');
+    if(on>0){ bd.textContent=on; bd.classList.add('show'); } else bd.classList.remove('show');
+  });
+}
+
+/* weather chip: tap to expand the forecast, tap again to collapse */
+$('weather').addEventListener('click', ()=> $('weather').classList.toggle('expanded'));
+
+/* crime coverage callout */
+$('crime-badge').onclick = ()=> $('crime-info').classList.toggle('open');
+$('crime-info-close').onclick = ()=> $('crime-info').classList.remove('open');
 
 /* ================= Dashboard page =================
    Same live-card engine as the Insight rail, but as a standalone page:
@@ -1636,12 +1735,18 @@ map.on('zoomend', ()=>{
    so the map shows WHY the dots stop instead of looking half-loaded */
 let CITY_LIMITS=null;
 async function ensureCityLimits(show){
-  if(!show){ if(CITY_LIMITS && map.hasLayer(CITY_LIMITS)) map.removeLayer(CITY_LIMITS); return; }
+  $('crime-badge').classList.toggle('show', !!show);
+  if(!show){
+    if(CITY_LIMITS && map.hasLayer(CITY_LIMITS)) map.removeLayer(CITY_LIMITS);
+    $('crime-info').classList.remove('open');
+    return;
+  }
   if(!CITY_LIMITS){
     try{
       const gj=await fetchArcGIS(`${CLARK}/CityBoundary/MapServer/0`,{maxOffset:0.0004});
-      CITY_LIMITS=L.geoJSON(gj,{style:{color:'#9db4cc', weight:1.6, dashArray:'6 7', fill:false, opacity:.65},
-        onEachFeature:(f,l)=>l.bindPopup('<div class="pp-title">City limits</div><div style="font-size:.85em">VPD crime data covers the city of Vancouver only — outside this line, no dots doesn\'t mean no crime.</div>')});
+      CITY_LIMITS=L.geoJSON(gj,{style:{color:'#ffb020', weight:2.6, dashArray:'7 8', fill:false, opacity:.9},
+        onEachFeature:(f,l)=>l.bindPopup(`<div class="pp-title">City limits — crime data boundary</div>
+          <div style="font-size:.85em">VPD crime data covers the city of Vancouver only. Outside this line, no dots means no <i>public data</i> — not necessarily no crime. Tap the amber badge at the top of the map for details.</div>`)});
     }catch(e){ return; }
   }
   if(state.crime && state.crime.on && !map.hasLayer(CITY_LIMITS)) CITY_LIMITS.addTo(map);
@@ -1692,7 +1797,6 @@ $('search-go').onclick=doSearch;
 $('search-box').addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
 
 /* ---------------- misc UI ---------------- */
-$('sb-toggle').onclick = ()=> $('sidebar').classList.toggle('hidden');
 $('btn-home').onclick = ()=> map.setView(HOME.center, HOME.zoom);
 $('btn-refresh').onclick = ()=>{
   for(const cfg of LAYERS){
