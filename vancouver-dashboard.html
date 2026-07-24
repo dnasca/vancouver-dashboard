@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vancouver WA Citizen Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+<style>
+  :root{
+    --bg:#0f1b2a; --panel:#16263b; --panel2:#1d3049; --ink:#eef4fb; --muted:#9db4cc;
+    --accent:#4da3ff; --good:#3ecf8e; --warn:#ffb020; --bad:#ff5c5c;
+    --fs:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif; font-size:var(--fs); background:var(--bg); color:var(--ink); overflow:hidden;}
+  #app{display:flex; height:100vh; width:100vw;}
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{width:340px; min-width:340px; background:var(--panel); display:flex; flex-direction:column; box-shadow:2px 0 12px rgba(0,0,0,.4); z-index:1001; transition:margin-left .25s;}
+  #sidebar.hidden{margin-left:-340px;}
+  #sb-head{padding:14px 16px 10px; border-bottom:1px solid #24405f;}
+  #sb-head h1{font-size:1.25em; line-height:1.2;}
+  #sb-head .sub{color:var(--muted); font-size:.8em; margin-top:2px;}
+  #controls-row{display:flex; gap:8px; margin-top:10px;}
+  .btn{background:var(--panel2); color:var(--ink); border:1px solid #2c4a6e; border-radius:8px; padding:6px 10px; cursor:pointer; font-size:.85em;}
+  .btn:hover{background:#254060;}
+  #search-row{display:flex; gap:6px; padding:10px 16px 4px;}
+  #search-box{flex:1; padding:9px 12px; border-radius:8px; border:1px solid #2c4a6e; background:var(--panel2); color:var(--ink); font-size:.95em;}
+  #search-box::placeholder{color:var(--muted);}
+  #sb-body{flex:1; overflow-y:auto; padding:8px 16px 90px;}
+  #sb-body::-webkit-scrollbar{width:8px;} #sb-body::-webkit-scrollbar-thumb{background:#2c4a6e; border-radius:4px;}
+
+  /* weather card */
+  #weather{background:linear-gradient(135deg,#1c3553,#152c47); border:1px solid #2c4a6e; border-radius:12px; padding:12px 14px; margin:10px 0 14px;}
+  #weather .wx-now{display:flex; align-items:center; gap:12px;}
+  #weather .wx-temp{font-size:2em; font-weight:600;}
+  #weather .wx-desc{color:var(--muted); font-size:.85em;}
+  #wx-alerts{margin-top:8px;}
+  .wx-alert{background:#4a2020; border:1px solid var(--bad); border-radius:8px; padding:6px 9px; font-size:.8em; margin-top:6px;}
+  #wx-fore{display:flex; gap:6px; margin-top:10px; overflow-x:auto;}
+  .wx-day{background:#122439; border-radius:8px; padding:6px 8px; min-width:74px; text-align:center; font-size:.72em;}
+  .wx-day b{display:block; font-size:1.15em; margin:2px 0;}
+
+  .group{margin-bottom:6px;}
+  .group-h{display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:9px 6px; border-radius:8px; font-weight:600; font-size:.95em; user-select:none;}
+  .group-h:hover{background:var(--panel2);}
+  .group-h .chev{transition:transform .2s; color:var(--muted);}
+  .group.open .chev{transform:rotate(90deg);}
+  .group-items{display:none; padding:2px 0 6px;}
+  .group.open .group-items{display:block;}
+
+  .layer-row{display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:8px;}
+  .layer-row:hover{background:var(--panel2);}
+  .layer-row label{flex:1; cursor:pointer; display:flex; align-items:center; gap:10px;}
+  .sw{position:relative; width:40px; height:22px; flex:none;}
+  .sw input{opacity:0; width:0; height:0;}
+  .sl{position:absolute; inset:0; background:#2c4a6e; border-radius:22px; transition:.2s; cursor:pointer;}
+  .sl:before{content:""; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#c8d9ec; border-radius:50%; transition:.2s;}
+  .sw input:checked + .sl{background:var(--accent);}
+  .sw input:checked + .sl:before{transform:translateX(18px); background:#fff;}
+  .dot{width:12px; height:12px; border-radius:50%; flex:none; border:2px solid rgba(255,255,255,.55);}
+  .lstat{font-size:.7em; color:var(--muted); min-width:52px; text-align:right;}
+  .lstat.err{color:var(--bad);}
+  .hint{font-size:.72em; color:var(--warn); padding:0 8px 4px 58px; display:none;}
+  select.mini{background:var(--panel2); color:var(--ink); border:1px solid #2c4a6e; border-radius:6px; padding:3px 6px; font-size:.8em;}
+
+  /* ---------- Map ---------- */
+  #map{flex:1; height:100%; background:#0b141f;}
+  .leaflet-container{font:inherit;}
+  .leaflet-popup-content-wrapper{background:var(--panel); color:var(--ink); border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.5);}
+  .leaflet-popup-tip{background:var(--panel);}
+  .leaflet-popup-content{margin:12px 16px; font-size:.9em; line-height:1.45; max-height:280px; overflow-y:auto;}
+  .pp-title{font-weight:700; font-size:1.05em; margin-bottom:6px; color:var(--accent);}
+  .pp-row{display:flex; gap:8px;}
+  .pp-row .k{color:var(--muted); min-width:110px; flex:none;}
+  .leaflet-bar a{background:var(--panel); color:var(--ink); border-bottom:1px solid #2c4a6e;}
+  .leaflet-bar a:hover{background:var(--panel2);}
+  .leaflet-control-attribution{background:rgba(15,27,42,.8)!important; color:var(--muted)!important; font-size:10px!important;}
+  .leaflet-control-attribution a{color:var(--accent)!important;}
+
+  /* toggle sidebar button (on map) */
+  #sb-toggle{position:absolute; top:12px; left:12px; z-index:1000; background:var(--panel); border:1px solid #2c4a6e; color:var(--ink); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:1em; box-shadow:0 2px 10px rgba(0,0,0,.4);}
+  #basemap-ctl{position:absolute; top:12px; right:12px; z-index:1000; display:flex; gap:6px;}
+  #basemap-ctl .btn{box-shadow:0 2px 10px rgba(0,0,0,.4);}
+  #basemap-ctl .btn.on{background:var(--accent); border-color:var(--accent); color:#08243f; font-weight:600;}
+
+  /* badge */
+  #badge{position:absolute; bottom:26px; right:12px; z-index:1000; background:var(--panel); border:1px solid #2c4a6e; border-radius:10px; padding:7px 12px; font-size:.8em; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.4);}
+  #badge b{color:var(--accent);}
+
+  /* toast */
+  #toast{position:absolute; bottom:26px; left:50%; transform:translateX(-50%); z-index:1200; background:#33212a; border:1px solid var(--bad); color:var(--ink); border-radius:10px; padding:9px 16px; font-size:.85em; display:none; max-width:70vw;}
+
+  /* property value legend */
+  #val-legend{position:absolute; bottom:26px; left:12px; z-index:1000; background:var(--panel); border:1px solid #2c4a6e; border-radius:10px; padding:10px 14px; display:none; box-shadow:0 2px 10px rgba(0,0,0,.4); width:210px;}
+  #val-legend .vl-title{font-size:.78em; font-weight:600; margin-bottom:6px;}
+  #val-legend .vl-band{font-size:.68em; color:var(--muted); margin-bottom:6px;}
+  #val-legend .vl-bar{height:10px; border-radius:5px; background:linear-gradient(90deg,#2c7bb6,#3ecf8e,#ffd34d,#ff7043,#d7191c);}
+  #val-legend .vl-labels{display:flex; justify-content:space-between; font-size:.65em; color:var(--muted); margin-top:3px;}
+
+  /* download progress */
+  #dl-progress{position:absolute; bottom:70px; left:12px; z-index:1100; background:var(--panel); border:1px solid var(--accent); border-radius:10px; padding:10px 14px; display:none; box-shadow:0 4px 16px rgba(0,0,0,.5); width:230px;}
+  #dl-progress .dp-title{font-size:.8em; font-weight:600; margin-bottom:6px;}
+  #dl-progress .dp-track{height:8px; border-radius:4px; background:#243d5c; overflow:hidden;}
+  #dl-progress .dp-fill{height:100%; width:0%; border-radius:4px; background:linear-gradient(90deg,var(--accent),#3ecf8e); transition:width .3s;}
+  #dl-progress .dp-sub{font-size:.68em; color:var(--muted); margin-top:5px; display:flex; justify-content:space-between; align-items:center;}
+  #dl-progress .dp-cancel{background:none; border:none; color:var(--bad); cursor:pointer; font-size:1em;}
+  .dl-btn-row{padding:2px 8px 8px 34px;}
+  .dl-btn-row .btn{font-size:.75em; width:100%;}
+
+  /* modal */
+  #modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:2000; display:none; align-items:center; justify-content:center;}
+  #modal{background:var(--panel); border:1px solid #2c4a6e; border-radius:14px; max-width:560px; width:92vw; max-height:80vh; overflow-y:auto; padding:22px 26px;}
+  #modal h2{margin-bottom:10px;} #modal p{margin:8px 0; color:#cfe0f2; font-size:.92em; line-height:1.5;}
+  #modal .close{float:right;}
+
+  @media (max-width:720px){
+    #sidebar{position:absolute; height:100%;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div id="sb-head">
+      <h1>Vancouver, WA<br><span style="color:var(--accent)">Citizen Dashboard</span></h1>
+      <div class="sub">Live city &amp; county data on one map</div>
+      <div id="controls-row">
+        <button class="btn" id="fs-minus" title="Smaller text">A−</button>
+        <button class="btn" id="fs-plus" title="Larger text">A+</button>
+        <button class="btn" id="btn-home">⌂ Reset view</button>
+        <button class="btn" id="btn-refresh" title="Clear cache and reload active layers">⟳ Refresh</button>
+        <button class="btn" id="btn-about">ℹ About</button>
+      </div>
+    </div>
+    <div id="search-row">
+      <input id="search-box" placeholder="Search an address or place…">
+      <button class="btn" id="search-go">Go</button>
+    </div>
+    <div id="sb-body">
+      <div id="weather">
+        <div class="wx-now">
+          <div class="wx-temp" id="wx-temp">--°</div>
+          <div>
+            <div id="wx-name" style="font-weight:600">Weather</div>
+            <div class="wx-desc" id="wx-desc">Loading forecast…</div>
+          </div>
+        </div>
+        <div id="wx-alerts"></div>
+        <div id="wx-fore"></div>
+      </div>
+      <div id="groups"></div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<button id="sb-toggle">☰ Layers</button>
+<div id="basemap-ctl">
+  <button class="btn on" id="bm-street">Street</button>
+  <button class="btn" id="bm-sat">Satellite</button>
+</div>
+<div id="badge" onclick="document.getElementById('modal-bg').style.display='flex'">Built with <b>Claude</b></div>
+<div id="toast"></div>
+
+<div id="val-legend">
+  <div class="vl-title">Property value</div>
+  <div class="vl-band" id="vl-band"></div>
+  <div class="vl-bar"></div>
+  <div class="vl-labels"><span>$100k</span><span>$450k</span><span>$2M+</span></div>
+</div>
+
+<div id="dl-progress">
+  <div class="dp-title">Downloading county parcels…</div>
+  <div class="dp-track"><div class="dp-fill" id="dp-fill"></div></div>
+  <div class="dp-sub"><span id="dp-text">starting…</span><button class="dp-cancel" id="dp-cancel">✕ cancel</button></div>
+</div>
+
+<div id="modal-bg">
+  <div id="modal">
+    <button class="btn close" onclick="document.getElementById('modal-bg').style.display='none'">✕ Close</button>
+    <h2>About this dashboard</h2>
+    <p><b>Vancouver WA Citizen Dashboard</b> puts public data about the city on one interactive map: crime, collisions, property values, construction, parks, transit, rail, restaurants, culture and more.</p>
+    <p>Turn layers on and off with the switches in the left panel. Some detailed layers (property values, restaurants, apartments) ask you to zoom in first — this keeps the map fast.</p>
+    <p>Click any dot, line, or shape on the map for details.</p>
+    <p><b>Data sources:</b> City of Vancouver GIS (Vancouver Police Dept. crime), Clark County GIS (parcels, collisions, parks, rail, transit, construction), National Weather Service, OpenStreetMap contributors.</p>
+    <p>Data belongs to its respective public agencies and may lag real time. This tool is an independent community project, not an official city product.</p>
+    <p style="margin-top:14px; color:var(--accent); font-weight:600;">Proudly built with Claude (claude.ai)</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   Vancouver WA Citizen Dashboard — single-file build
+   Built with Claude · data: City of Vancouver GIS, Clark County GIS,
+   National Weather Service, OpenStreetMap
+===================================================================== */
+
+const HOME = {center:[45.6387,-122.6393], zoom:12};
+const map = L.map('map',{zoomControl:true, minZoom:10, maxZoom:19}).setView(HOME.center, HOME.zoom);
+map.zoomControl.setPosition('bottomright');
+
+const streetTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap contributors'});
+const satTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+  maxZoom:19, attribution:'Imagery &copy; Esri'});
+streetTiles.addTo(map);
+
+document.getElementById('bm-street').onclick = ()=>{ setBase('street'); };
+document.getElementById('bm-sat').onclick = ()=>{ setBase('sat'); };
+function setBase(which){
+  const s=document.getElementById('bm-street'), a=document.getElementById('bm-sat');
+  if(which==='street'){ map.addLayer(streetTiles); map.removeLayer(satTiles); s.classList.add('on'); a.classList.remove('on'); }
+  else { map.addLayer(satTiles); map.removeLayer(streetTiles); a.classList.add('on'); s.classList.remove('on'); }
+}
+
+/* ---------------- helpers ---------------- */
+const $ = id=>document.getElementById(id);
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none',5000); }
+const fmtMoney = v => (v==null||v==='')?'—':'$'+Number(v).toLocaleString(undefined,{maximumFractionDigits:0});
+const fmtNum = v => (v==null||v==='')?'—':Number(v).toLocaleString();
+const fmtDate = v => { if(v==null||v==='') return '—';
+  const d = typeof v==='number' ? new Date(v) : new Date(String(v));
+  return isNaN(d) ? String(v) : d.toLocaleDateString(); };
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Generic popup: show a curated field list if given, else all non-empty props */
+function buildPopup(title, props, spec){
+  let rows='';
+  if(spec){
+    for(const [key,label,fmt] of spec){
+      if(!(key in props)) continue;
+      const v = props[key];
+      if(v==null || v==='' ) continue;
+      rows += `<div class="pp-row"><span class="k">${esc(label)}</span><span>${(fmt||esc)(v)}</span></div>`;
+    }
+  } else {
+    const skip=/^(objectid|globalid|shape|shape_.*|fid)$/i;
+    let n=0;
+    for(const k in props){
+      if(skip.test(k)) continue;
+      const v=props[k];
+      if(v==null||v==='') continue;
+      rows += `<div class="pp-row"><span class="k">${esc(k)}</span><span>${esc(v)}</span></div>`;
+      if(++n>=14) break;
+    }
+  }
+  return `<div class="pp-title">${esc(title)}</div>${rows||'<i>No details available</i>'}`;
+}
+
+function bboxParam(){
+  const b = map.getBounds();
+  return `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
+}
+
+/* ---------------- data fetchers ---------------- */
+
+/* JSONP — bypasses CORS for ArcGIS servers that don't send CORS headers
+   (e.g. gis.clark.wa.gov when this page is opened from your own disk). */
+let _jsonpN = 0;
+function jsonp(url, timeoutMs=25000){
+  return new Promise((resolve,reject)=>{
+    const cb = '__agscb'+(++_jsonpN);
+    const s = document.createElement('script');
+    const t = setTimeout(()=>{ cleanup(); reject(new Error('JSONP timeout')); }, timeoutMs);
+    function cleanup(){ clearTimeout(t); delete window[cb]; s.remove(); }
+    window[cb] = data=>{ cleanup(); resolve(data); };
+    s.onerror = ()=>{ cleanup(); reject(new Error('JSONP load error')); };
+    s.src = url + '&callback=' + cb;
+    document.body.appendChild(s);
+  });
+}
+
+/* esriJSON -> GeoJSON (points, polylines, polygons) */
+function esriToGeoJSON(esri){
+  const feats = (esri.features||[]).map(f=>{
+    const g = f.geometry||{};
+    let geometry = null;
+    if(g.x!=null) geometry = {type:'Point', coordinates:[g.x,g.y]};
+    else if(g.paths) geometry = g.paths.length===1
+      ? {type:'LineString', coordinates:g.paths[0]}
+      : {type:'MultiLineString', coordinates:g.paths};
+    else if(g.rings) geometry = {type:'Polygon', coordinates:g.rings};
+    return {type:'Feature', geometry, properties:f.attributes||{}};
+  }).filter(f=>f.geometry);
+  return {type:'FeatureCollection', features:feats};
+}
+
+async function fetchArcGIS(url, {where='1=1', fields='*', bounds=null, limit=2000, offset=0, maxOffset=0, signal}={}){
+  const p = new URLSearchParams({
+    where, outFields:fields, outSR:'4326',
+    resultRecordCount:String(limit), returnGeometry:'true'
+  });
+  if(offset) p.set('resultOffset', String(offset));
+  if(maxOffset) p.set('maxAllowableOffset', String(maxOffset));
+  if(bounds){
+    p.set('geometry', `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
+    p.set('geometryType','esriGeometryEnvelope');
+    p.set('inSR','4326');
+    p.set('spatialRel','esriSpatialRelIntersects');
+  }
+  return arcgisRequest(url, p, signal);
+}
+
+/* Remembers per-host whether CORS fetch works, so we don't pay a failed
+   attempt on every request (big win during bulk downloads). */
+const _corsBlocked = {};
+async function arcgisRequest(url, params, signal){
+  const host = url.split('/')[2];
+  if(!_corsBlocked[host]){
+    try{
+      const r = await fetch(`${url}/query?${params}&f=geojson`, {signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      if(j.error) throw new Error(j.error.message||'ArcGIS error');
+      return j;
+    }catch(err){
+      if(err.name==='AbortError') throw err;
+      _corsBlocked[host] = true;   // fall through to JSONP from now on
+    }
+  }
+  const j = await jsonp(`${url}/query?${params}&f=json`);
+  if(j.error) throw new Error(j.error.message||'ArcGIS error');
+  return (j.features && j.features.length && j.features[0].geometry===undefined && j.features[0].attributes)
+    ? j                       // table-only result (statistics) — no geometry to convert
+    : esriToGeoJSON(j);
+}
+
+/* raw query for statistics etc. — always returns attribute rows */
+async function arcgisStats(url, paramsObj, signal){
+  const p = new URLSearchParams(paramsObj);
+  const host = url.split('/')[2];
+  if(!_corsBlocked[host]){
+    try{
+      const r = await fetch(`${url}/query?${p}&f=json`, {signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j = await r.json();
+      if(j.error) throw new Error(j.error.message||'ArcGIS error');
+      return j;
+    }catch(err){
+      if(err.name==='AbortError') throw err;
+      _corsBlocked[host]=true;
+    }
+  }
+  const j = await jsonp(`${url}/query?${p}&f=json`);
+  if(j.error) throw new Error(j.error.message||'ArcGIS error');
+  return j;
+}
+
+async function fetchOverpass(filters, {bounds, signal}={}){
+  const b = bounds || map.getBounds();
+  const bb = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const parts = filters.map(f=>`node${f}(${bb});way${f}(${bb});`).join('');
+  const q = `[out:json][timeout:25];(${parts});out center 600;`;
+  const r = await fetch('https://overpass-api.de/api/interpreter',{
+    method:'POST', body:'data='+encodeURIComponent(q), signal,
+    headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  if(!r.ok) throw new Error('Overpass HTTP '+r.status);
+  const j = await r.json();
+  return (j.elements||[]).map(e=>({
+    lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon, tags: e.tags||{}
+  })).filter(e=>e.lat!=null);
+}
+
+/* ---------------- layer registry ---------------- */
+const CLARK = 'https://gis.clark.wa.gov/arcgisfed/rest/services/ClarkView_Public';
+const CRIME_URL = 'https://services.arcgis.com/oNvpY90qsPDizwkN/arcgis/rest/services/Violent_and_Property_Crime_2021_2024_WFL1/FeatureServer/1';
+
+const crimeColors = {
+  'Theft':'#ed5151','Vandalism':'#149ece','Motor Vehicle Theft':'#a7c636',
+  'Assault, Simple':'#9e559c','Burglary':'#fc921f','Intimidation':'#ffde3e',
+  'Assault, Aggravated':'#6b6bd6','Violate NCO':'#3caf99','Other':'#f789d8'};
+
+function circle(color, r=6){ return {radius:r, color:'#ffffff', weight:1, fillColor:color, fillOpacity:.85}; }
+
+const LAYERS = [
+  /* ---------- Safety ---------- */
+  { id:'crime', group:'Safety', label:'Crime (VPD 2021–24)', color:'#ed5151',
+    kind:'arcgis', url:CRIME_URL, bbox:true, minZoom:13,
+    extraControl:{type:'select', options:['2024','2023','2022','2021'], label:'Year'},
+    whereFn: l => `year=${l.controlValue||'2024'}`,
+    fields:'reportdate,year,month,dayname,offensenibrscodenameabbreviated,offensenibrsgroup,offensenibrscrimeagainst,reportcasestatus,beat_gis',
+    point:(f)=>{ const t=f.properties.offensenibrscodenameabbreviated;
+      return circle(crimeColors[t]||'#aaaaaa'); },
+    popup:(p)=>buildPopup('Crime: '+(p.offensenibrscodenameabbreviated||'Unknown'), p, [
+      ['reportdate','Reported'],['offensenibrsgroup','NIBRS group'],
+      ['offensenibrscrimeagainst','Crime against'],['reportcasestatus','Case status'],
+      ['beat_gis','Police beat'],['dayname','Day']]) },
+
+  { id:'collisions', group:'Safety', label:'Traffic collisions (points)', color:'#ffb020',
+    kind:'arcgis', url:`${CLARK}/Collisions/MapServer/0`, bbox:true, minZoom:14,
+    point:()=>circle('#ffb020',5),
+    popup:(p)=>buildPopup('Traffic collision', p) },
+
+  { id:'collheat', group:'Safety', label:'Accident hotspot heatmap', color:'#ff5c5c',
+    kind:'heat', url:`${CLARK}/Collisions/MapServer/0` },
+
+  { id:'fire', group:'Safety', label:'Fire stations', color:'#ff8080',
+    kind:'arcgis', url:`${CLARK}/FireStation/MapServer/0`, once:true,
+    point:()=>circle('#ff8080',7),
+    popup:(p)=>buildPopup('Fire station', p) },
+
+  /* ---------- Property & Land ---------- */
+  { id:'parcels', group:'Property & Land', label:'Land & property values', color:'#3ecf8e',
+    kind:'parcels', url:`${CLARK}/TaxlotsPublic/MapServer/0`,
+    extraControl:{type:'select', label:'Show',
+      options:['All values','Under $250k','$250k–$500k','$500k–$1M','Over $1M']},
+    fields:'SitusAddrs,MktLandVal,MktBldgVal,MktTotVal,TAXTOTVAL,TaxAmount,SaleDate,SaleAmount,BldgYrBlt,BLDGSQFT,PropertyUseClass,ZoneDesc,AcctTypeDesc',
+    poly:(f)=>{ const c=valColor(f.properties.MktTotVal);
+      return {color:c, weight:1, fillColor:c, fillOpacity:.45}; },
+    popup:(p)=>buildPopup(p.SitusAddrs||'Parcel', p, [
+      ['MktTotVal','Market total',fmtMoney],['MktLandVal','Land value',fmtMoney],
+      ['MktBldgVal','Building value',fmtMoney],['TAXTOTVAL','Taxable value',fmtMoney],
+      ['TaxAmount','Annual tax',fmtMoney],['SaleDate','Last sale',fmtDate],
+      ['SaleAmount','Sale price',fmtMoney],['BldgYrBlt','Year built'],
+      ['BLDGSQFT','Building sq ft',fmtNum],['PropertyUseClass','Use'],['ZoneDesc','Zoning']]) },
+
+  { id:'industrial', group:'Property & Land', label:'Industrial areas', color:'#8d6e63',
+    kind:'arcgis', url:`${CLARK}/IndustrialNeighborhoodsBoundary/MapServer/0`, once:true,
+    poly:()=>({color:'#8d6e63', weight:1.5, fillColor:'#8d6e63', fillOpacity:.28}),
+    popup:(p)=>buildPopup('Industrial area', p) },
+
+  { id:'apartments', group:'Property & Land', label:'Apartment buildings', color:'#ba68c8',
+    kind:'overpass', minZoom:15, filters:['["building"="apartments"]'],
+    cluster:true, color2:'#ba68c8',
+    tagTitle:t=>t.name||'Apartment building',
+    tagRows:t=>[['Address',[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ')||null],['Levels',t['building:levels']||null]] },
+
+  /* ---------- Getting Around ---------- */
+  { id:'construction', group:'Getting Around', label:'Road projects (6-yr TIP)', color:'#ff9800',
+    kind:'arcgis', url:`${CLARK}/6YearTransportationImprovementProgram/MapServer/0`, once:true,
+    line:()=>({color:'#ff9800', weight:5, opacity:.85, dashArray:'8 6'}),
+    popup:(p)=>buildPopup('Planned road project', p) },
+
+  { id:'roadlog', group:'Getting Around', label:'Major roads', color:'#90a4ae',
+    kind:'arcgis', url:`${CLARK}/MajorRoads/MapServer/0`, once:true,
+    line:()=>({color:'#90a4ae', weight:2, opacity:.7}),
+    popup:(p)=>buildPopup('Major road', p) },
+
+  { id:'rail', group:'Getting Around', label:'Rail lines', color:'#b0bec5',
+    kind:'arcgis', url:`${CLARK}/RailroadGroup_MainTrack/MapServer/0`, once:true,
+    line:()=>({color:'#eceff1', weight:3, dashArray:'2 8', opacity:.9}),
+    popup:(p)=>buildPopup('Railroad', p) },
+
+  { id:'railx', group:'Getting Around', label:'Rail crossings', color:'#ffd54f',
+    kind:'arcgis', url:`${CLARK}/RailroadCrossings/MapServer/0`, once:true,
+    point:()=>circle('#ffd54f',5),
+    popup:(p)=>buildPopup('Rail crossing', p) },
+
+  { id:'busroutes', group:'Getting Around', label:'C-TRAN bus routes', color:'#4da3ff',
+    kind:'arcgis', url:`${CLARK}/CTranRoutes/MapServer/0`, once:true,
+    line:()=>({color:'#4da3ff', weight:2.5, opacity:.75}),
+    popup:(p)=>buildPopup('C-TRAN route', p) },
+
+  { id:'busstops', group:'Getting Around', label:'Bus stops', color:'#4da3ff',
+    kind:'arcgis', url:`${CLARK}/CTRANBusStops/MapServer/0`, bbox:true, minZoom:15,
+    point:()=>circle('#4da3ff',4),
+    popup:(p)=>buildPopup('Bus stop', p) },
+
+  /* ---------- Life & Leisure ---------- */
+  { id:'parks', group:'Life & Leisure', label:'Parks', color:'#66bb6a',
+    kind:'arcgis', url:`${CLARK}/ParkLand/MapServer/0`, once:true,
+    poly:()=>({color:'#2e7d32', weight:1, fillColor:'#66bb6a', fillOpacity:.4}),
+    point:()=>circle('#66bb6a',6),
+    popup:(p)=>buildPopup(p.PARKNAME||p.NAME||p.ParkName||'Park', p) },
+
+  { id:'trails', group:'Life & Leisure', label:'Trails', color:'#9ccc65',
+    kind:'arcgis', url:`${CLARK}/Trail/MapServer/0`, once:true,
+    line:()=>({color:'#9ccc65', weight:2.5, dashArray:'4 5', opacity:.9}),
+    popup:(p)=>buildPopup('Trail', p) },
+
+  { id:'schools', group:'Life & Leisure', label:'Schools', color:'#ffca28',
+    kind:'arcgis', url:`${CLARK}/SchoolFacilities/MapServer/0`, once:true,
+    point:()=>circle('#ffca28',6),
+    popup:(p)=>buildPopup(p.NAME||p.SchoolName||p.Name||'School', p) },
+
+  { id:'food', group:'Life & Leisure', label:'Restaurants & food', color:'#ff7043',
+    kind:'overpass', minZoom:15, cluster:true, color2:'#ff7043',
+    filters:['["amenity"~"restaurant|cafe|fast_food|bar|pub|ice_cream"]'],
+    tagTitle:t=>t.name||({restaurant:'Restaurant',cafe:'Café',fast_food:'Fast food',bar:'Bar',pub:'Pub',ice_cream:'Ice cream'}[t.amenity]||'Food'),
+    tagRows:t=>[['Type',t.amenity],['Cuisine',(t.cuisine||'').replace(/[_;]/g,' ')||null],
+      ['Address',[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ')||null],
+      ['Hours',t.opening_hours||null],['Phone',t.phone||null],['Website',t.website?`<a href="${esc(t.website)}" target="_blank" style="color:var(--accent)">link</a>`:null]] },
+
+  { id:'culture', group:'Life & Leisure', label:'Culture & arts', color:'#ce93d8',
+    kind:'overpass', minZoom:12, cluster:true, color2:'#ce93d8',
+    filters:['["tourism"~"museum|gallery|attraction|artwork"]','["amenity"~"theatre|arts_centre|library|cinema|community_centre"]','["historic"~"memorial|monument"]'],
+    tagTitle:t=>t.name||'Cultural site',
+    tagRows:t=>[['Type',t.tourism||t.amenity||t.historic],['Address',[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ')||null],
+      ['Hours',t.opening_hours||null],['Website',t.website?`<a href="${esc(t.website)}" target="_blank" style="color:var(--accent)">link</a>`:null]] },
+
+  { id:'sports', group:'Life & Leisure', label:'Sports & recreation', color:'#26c6da',
+    kind:'overpass', minZoom:13, cluster:true, color2:'#26c6da',
+    filters:['["leisure"~"sports_centre|stadium|fitness_centre|swimming_pool|golf_course|bowling_alley|ice_rink"]'],
+    tagTitle:t=>t.name||'Sports facility',
+    tagRows:t=>[['Type',(t.leisure||'').replace(/_/g,' ')],['Sport',(t.sport||'').replace(/[_;]/g,' ')||null],
+      ['Address',[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ')||null]] },
+
+  { id:'grocery', group:'Life & Leisure', label:'Groceries & pharmacies', color:'#81c784',
+    kind:'overpass', minZoom:14, cluster:true, color2:'#81c784',
+    filters:['["shop"~"supermarket|greengrocer"]','["amenity"="pharmacy"]'],
+    tagTitle:t=>t.name||(t.amenity==='pharmacy'?'Pharmacy':'Grocery'),
+    tagRows:t=>[['Type',t.shop||t.amenity],['Address',[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ')||null],['Hours',t.opening_hours||null]] },
+];
+
+/* ---------------- sidebar build ---------------- */
+const GROUP_ORDER = ['Safety','Property & Land','Getting Around','Life & Leisure'];
+const groupsEl = $('groups');
+const groupEls = {};
+for(const g of GROUP_ORDER){
+  const div = document.createElement('div');
+  div.className='group'+(g==='Safety'?' open':'');
+  div.innerHTML = `<div class="group-h"><span>${g}</span><span class="chev">▶</span></div><div class="group-items"></div>`;
+  div.querySelector('.group-h').onclick = ()=>div.classList.toggle('open');
+  groupsEl.appendChild(div);
+  groupEls[g]=div.querySelector('.group-items');
+}
+
+const state = {};   // id -> {on, layer, ctrl, loaded}
+for(const cfg of LAYERS){
+  const row = document.createElement('div');
+  row.className='layer-row';
+  row.innerHTML = `
+    <label><span class="dot" style="background:${cfg.color}"></span><span>${cfg.label}</span></label>
+    <span class="lstat" id="st-${cfg.id}"></span>
+    <span class="sw"><input type="checkbox" id="cb-${cfg.id}"><span class="sl" onclick="document.getElementById('cb-${cfg.id}').click()"></span></span>`;
+  groupEls[cfg.group].appendChild(row);
+  if(cfg.extraControl){
+    const sel=document.createElement('div');
+    sel.style.cssText='padding:0 8px 6px 34px;font-size:.8em;color:var(--muted)';
+    sel.innerHTML = `${cfg.extraControl.label}: <select class="mini" id="ec-${cfg.id}">`+
+      cfg.extraControl.options.map(o=>`<option>${o}</option>`).join('')+`</select>`;
+    groupEls[cfg.group].appendChild(sel);
+  }
+  const hint=document.createElement('div');
+  hint.className='hint'; hint.id=`hint-${cfg.id}`;
+  hint.textContent='Zoom in closer to load this layer';
+  groupEls[cfg.group].appendChild(hint);
+  if(cfg.id==='parcels'){
+    const dl=document.createElement('div');
+    dl.className='dl-btn-row';
+    dl.innerHTML='<button class="btn" id="dl-btn">⬇ Download whole county (works offline after)</button>';
+    groupEls[cfg.group].appendChild(dl);
+  }
+
+  state[cfg.id]={on:false, layer:null, ctrl:null, cache:null, seq:0};
+  $(`cb-${cfg.id}`).addEventListener('change', e=>{
+    state[cfg.id].on = e.target.checked;
+    if(cfg.id==='parcels') $('val-legend').style.display = e.target.checked?'block':'none';
+    if(e.target.checked) refreshLayer(cfg); else hideLayer(cfg);
+  });
+  const ec=$(`ec-${cfg.id}`);
+  if(ec) ec.addEventListener('change',()=>{ cfg.controlValue=ec.value;
+    if(state[cfg.id].on) refreshLayer(cfg); });
+}
+
+function setStat(id, txt, err){ const el=$(`st-${id}`); el.textContent=txt; el.classList.toggle('err',!!err); }
+
+/* Toggle OFF = hide only. Data stays cached; toggling back on is instant. */
+function hideLayer(cfg){
+  const s=state[cfg.id];
+  if(s.ctrl) s.ctrl.abort();
+  if(s.layer && map.hasLayer(s.layer)) map.removeLayer(s.layer);
+  setStat(cfg.id,'');
+  $(`hint-${cfg.id}`).style.display='none';
+}
+
+/* ---------------- layer loading (cached) ----------------
+   Strategy: fetch a padded area (~40% beyond the screen) and remember it.
+   Panning inside the cached area, or toggling a layer off/on, costs zero
+   requests. We only refetch when you leave the cached area, cross a
+   detail threshold, change a filter, or press ⟳ Refresh.               */
+/* --- property value machinery ------------------------------------ */
+const TAXLOTS = `${CLARK}/TaxlotsPublic/MapServer/0`;
+const TRACTS_URL = `${CLARK}/CensusTractBoundary2020/MapServer/0`;
+
+function parcelWhere(opt){
+  switch(opt){
+    case 'Under $250k':  return 'MktTotVal>0 AND MktTotVal<250000';
+    case '$250k–$500k':  return 'MktTotVal>=250000 AND MktTotVal<500000';
+    case '$500k–$1M':    return 'MktTotVal>=500000 AND MktTotVal<1000000';
+    case 'Over $1M':     return 'MktTotVal>=1000000';
+    default:             return 'MktTotVal>0';
+  }
+}
+function matchVal(opt,v){
+  if(!v||v<=0) return false;
+  switch(opt){
+    case 'Under $250k':  return v<250000;
+    case '$250k–$500k':  return v>=250000&&v<500000;
+    case '$500k–$1M':    return v>=500000&&v<1000000;
+    case 'Over $1M':     return v>=1000000;
+    default: return true;
+  }
+}
+function firstCoord(g){
+  if(!g) return null;
+  if(g.type==='Point') return g.coordinates;
+  if(g.type==='Polygon') return g.coordinates[0]&&g.coordinates[0][0];
+  if(g.type==='MultiPolygon') return g.coordinates[0]&&g.coordinates[0][0]&&g.coordinates[0][0][0];
+  return null;
+}
+
+/* continuous value → color, log scale: $100k=blue … $2M+=red */
+const VAL_STOPS=[[0,[44,123,182]],[.25,[62,207,142]],[.5,[255,211,77]],[.75,[255,112,67]],[1,[215,25,28]]];
+function valColor(v){
+  if(!v||v<=0) return '#5b6b7d';
+  const t=Math.max(0,Math.min(1,(Math.log10(v)-5)/1.301));   // 1e5→0, 2e6→1
+  for(let i=1;i<VAL_STOPS.length;i++){
+    if(t<=VAL_STOPS[i][0]){
+      const [t0,c0]=VAL_STOPS[i-1],[t1,c1]=VAL_STOPS[i];
+      const f=(t-t0)/(t1-t0);
+      const c=c0.map((a,k)=>Math.round(a+(c1[k]-a)*f));
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    }
+  }
+  return 'rgb(215,25,28)';
+}
+
+/* tiny IndexedDB key-value store (survives closing the page) */
+function idbOpen(){ return new Promise((res,rej)=>{
+  const r=indexedDB.open('vwa-dash',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbGet(k){ try{ const db=await idbOpen();
+  return await new Promise((res,rej)=>{ const t=db.transaction('kv').objectStore('kv').get(k);
+    t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }catch(e){ return null; } }
+async function idbPut(k,v){ try{ const db=await idbOpen();
+  return await new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite').objectStore('kv').put(v,k);
+    t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }catch(e){} }
+
+/* full-county parcel dataset (from ⬇ download): {lon:[],lat:[],val:[]} */
+let PARCELS_FULL = null;
+let TRACT_GJ = null;   // tract polygons, fetched once
+
+/* aggregate points into a value grid over given bounds; returns cells */
+function buildGrid(bounds, opt, nx=26){
+  const w=bounds.getWest(), e=bounds.getEast(), s=bounds.getSouth(), n=bounds.getNorth();
+  const dx=(e-w)/nx, ny=Math.max(6,Math.round((n-s)/dx*0.7)), dy=(n-s)/ny;
+  const sum=new Float64Array(nx*ny), cnt=new Uint32Array(nx*ny);
+  const add=(lon,lat,v)=>{
+    if(lon<w||lon>=e||lat<s||lat>=n) return;
+    const i=Math.floor((lon-w)/dx), j=Math.floor((lat-s)/dy);
+    const k=j*nx+i; sum[k]+=v; cnt[k]++;
+  };
+  if(PARCELS_FULL){
+    const {lon,lat,val}=PARCELS_FULL;
+    for(let i=0;i<val.length;i++) if(matchVal(opt,val[i])) add(lon[i],lat[i],val[i]);
+  }
+  const finish=()=>{
+    const cells=[];
+    for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+      const k=j*nx+i;
+      if(!cnt[k]) continue;
+      cells.push({b:[[s+j*dy,w+i*dx],[s+(j+1)*dy,w+(i+1)*dx]], avg:sum[k]/cnt[k], n:cnt[k]});
+    }
+    return cells;
+  };
+  return {add, finish};
+}
+
+/* ---- canvas value surface: renders ALL downloaded parcels at any zoom ----
+   Fine pixel cells, recomputed from local data on every pan/zoom (a few ms
+   for 188k parcels). Granular county-wide, no server calls, no stale layers. */
+const ValueSurface = L.Layer.extend({
+  initialize(){ this._opt='All values'; this._cellPx=9; },
+  onAdd(m){
+    this._m=m;
+    this._c=L.DomUtil.create('canvas','');
+    this._c.style.pointerEvents='none';
+    m.getPane('overlayPane').appendChild(this._c);
+    m.on('moveend zoomend resize', this._rd, this);
+    m.on('zoomstart', this._hide, this);
+    this._rd();
+  },
+  onRemove(m){
+    L.DomUtil.remove(this._c);
+    m.off('moveend zoomend resize', this._rd, this);
+    m.off('zoomstart', this._hide, this);
+  },
+  setFilter(o){ if(o!==this._opt){ this._opt=o; if(this._m) this._rd(); } },
+  _hide(){ if(this._c) this._c.style.opacity=0; },
+  _rd(){
+    if(!this._m || !PARCELS_FULL) return;
+    const m=this._m, sz=m.getSize(), cp=this._cellPx;
+    this._c.width=sz.x; this._c.height=sz.y;
+    L.DomUtil.setPosition(this._c, m.containerPointToLayerPoint([0,0]));
+    const b=m.getBounds(), w=b.getWest(), e=b.getEast(), s=b.getSouth(), n=b.getNorth();
+    const mrc=la=>Math.log(Math.tan(Math.PI/4 + la*Math.PI/360));
+    const mN=mrc(n), mS=mrc(s);
+    const nx=Math.ceil(sz.x/cp), ny=Math.ceil(sz.y/cp);
+    const sum=new Float64Array(nx*ny), cnt=new Uint32Array(nx*ny);
+    const {lon,lat,val}=PARCELS_FULL, opt=this._opt;
+    for(let i=0;i<val.length;i++){
+      const lo=lon[i], la=lat[i], v=val[i];
+      if(lo<w||lo>e||la<s||la>n) continue;
+      if(!matchVal(opt,v)) continue;
+      const x=((lo-w)/(e-w))*sz.x, y=((mN-mrc(la))/(mN-mS))*sz.y;
+      const k=(y/cp|0)*nx+(x/cp|0);
+      sum[k]+=v; cnt[k]++;
+    }
+    const ctx=this._c.getContext('2d');
+    ctx.clearRect(0,0,sz.x,sz.y);
+    ctx.globalAlpha=.58;
+    for(let j=0;j<ny;j++) for(let i2=0;i2<nx;i2++){
+      const k=j*nx+i2;
+      if(!cnt[k]) continue;
+      ctx.fillStyle=valColor(sum[k]/cnt[k]);
+      ctx.fillRect(i2*cp, j*cp, cp, cp);
+    }
+    this._nx=nx; this._sum=sum; this._cnt=cnt;
+    this._c.style.opacity=1;
+  }
+});
+const VS = new ValueSurface();
+map.on('click', e=>{
+  if(!map.hasLayer(VS) || !VS._cnt) return;
+  const p=map.latLngToContainerPoint(e.latlng), cp=VS._cellPx;
+  const k=(p.y/cp|0)*VS._nx+(p.x/cp|0);
+  if(!VS._cnt[k]) return;
+  L.popup().setLatLng(e.latlng).setContent(
+    `<div class="pp-title">Area average</div>
+     <div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(VS._sum[k]/VS._cnt[k])}</span></div>
+     <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(VS._cnt[k])}</span></div>`).openOn(map);
+});
+
+function makeGeoJsonLayer(cfg, gj){
+  return L.geoJSON(gj,{
+    pointToLayer:(f,latlng)=> L.circleMarker(latlng, cfg.point?cfg.point(f):circle(cfg.color)),
+    style:(f)=>{
+      const t=f.geometry&&f.geometry.type;
+      if(/Polygon/.test(t) && cfg.poly) return cfg.poly(f);
+      if(/LineString/.test(t) && cfg.line) return cfg.line(f);
+      return cfg.poly?cfg.poly(f):(cfg.line?cfg.line(f):{color:cfg.color});
+    },
+    onEachFeature:(f,l)=> l.bindPopup(()=> (cfg.popup||((p)=>buildPopup(cfg.label,p)))(f.properties||{}), {maxWidth:340})
+  });
+}
+
+async function refreshLayer(cfg, force){
+  const s = state[cfg.id];
+  if(!s.on) return;
+  const z = map.getZoom();
+
+  const needsZoom = cfg.minZoom && z < cfg.minZoom;
+  $(`hint-${cfg.id}`).style.display = needsZoom ? 'block' : 'none';
+  if(needsZoom){ if(s.layer&&map.hasLayer(s.layer)) map.removeLayer(s.layer); setStat(cfg.id,'zoom in'); return; }
+
+  /* cache key: filter selection + detail band.
+     With the county download: fine canvas surface at all zooms until parcel
+     outlines take over at z16. Without: tract choropleth then server grid. */
+  const band = cfg.kind==='parcels'
+    ? (z>=16 ? 'poly' : (PARCELS_FULL ? 'surface' : (z<=12?'tract':'grid')))
+    : '-';
+  const key = (cfg.controlValue||'') + '|' + band;
+  const view = map.getBounds();
+  const spatial = cfg.bbox || cfg.kind==='overpass' ||
+                  (cfg.kind==='parcels' && (band==='grid'||band==='poly'));
+
+  if(cfg.kind==='parcels') $('vl-band').textContent =
+    band==='surface'?'County surface · every parcel, offline — zoom for lots':
+    band==='tract'?'Neighborhood view · avg per census tract':
+    band==='grid'?'Block view · avg per cell — zoom for parcels':'Parcel view · individual lots';
+
+  if(!force && s.cache && s.cache.key===key && (!spatial || s.cache.bounds.contains(view))){
+    if(s.layer && !map.hasLayer(s.layer)) s.layer.addTo(map);
+    setStat(cfg.id, s.cache.stat);
+    return;                                   // served from cache — no request
+  }
+
+  /* view band changed → strip the stale visual immediately (no ghost blobs) */
+  if(s.layer && s.cache && s.cache.key!==key && map.hasLayer(s.layer)){
+    map.removeLayer(s.layer);
+  }
+
+  if(s.ctrl) s.ctrl.abort();
+  s.ctrl = new AbortController();
+  const sig = s.ctrl.signal;
+  const myReq = ++s.seq;                      // guard against stale JSONP responses
+  setStat(cfg.id,'loading…');
+
+  try{
+    let newLayer, stat;
+    const fetchBounds = spatial ? view.pad(0.4) : null;
+
+    if(cfg.kind==='arcgis'){
+      const where = cfg.whereFn ? cfg.whereFn(cfg) : (cfg.where||'1=1');
+      const gj = await fetchArcGIS(cfg.url,{where, fields:cfg.fields||'*',
+        bounds:cfg.bbox?fetchBounds:null, limit:cfg.limit||2000, signal:sig});
+      newLayer = makeGeoJsonLayer(cfg, gj);
+      stat = fmtNum((gj.features||[]).length);
+    }
+    else if(cfg.kind==='parcels'){
+      const opt = cfg.controlValue;
+      const where = parcelWhere(opt);
+
+      if(band==='surface'){
+        VS.setFilter(opt||'All values');
+        newLayer = VS;
+        stat = fmtNum(PARCELS_FULL.val.length)+' offline';
+      }
+
+      else if(band==='tract'){
+        /* county view: server computes avg value per census tract — complete
+           coverage in two cheap requests, colored as a smooth choropleth.
+           If stats ever fail and a county download exists, fall back to a
+           fine local grid instead. */
+        let st=null;
+        try{
+          if(!TRACT_GJ){
+            TRACT_GJ = await fetchArcGIS(TRACTS_URL,{fields:'Tract,GEOID',
+              maxOffset:0.0004, signal:sig});
+          }
+          st = await arcgisStats(TAXLOTS,{
+            where, outFields:'',
+            outStatistics:JSON.stringify([
+              {statisticType:'avg',onStatisticField:'MktTotVal',outStatisticFieldName:'avgVal'},
+              {statisticType:'count',onStatisticField:'MktTotVal',outStatisticFieldName:'cnt'}]),
+            groupByFieldsForStatistics:'CensusTract'}, sig);
+        }catch(e){
+          if(e.name==='AbortError') throw e;
+          if(!PARCELS_FULL) throw e;
+          /* local fallback: county-wide grid from downloaded parcels */
+          const grid = buildGrid(view.pad(0.15), opt, 48);
+          const cells = grid.finish();
+          const rects = cells.map(c=>{
+            const r=L.rectangle(c.b,{color:valColor(c.avg), weight:0,
+              fillColor:valColor(c.avg), fillOpacity:.55});
+            r.bindPopup(()=>`<div class="pp-title">Area average</div>
+              <div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(c.avg)}</span></div>
+              <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(c.n)}</span></div>`,{maxWidth:260});
+            return r;
+          });
+          newLayer = L.layerGroup(rects);
+          stat = fmtNum(cells.length)+' cells (offline)';
+        }
+        if(st){
+        const byTract={};
+        for(const row of (st.features||[])){
+          const a=row.attributes||{};
+          if(a.CensusTract!=null) byTract[Math.round(a.CensusTract*100)]=a;
+        }
+        newLayer = L.geoJSON(TRACT_GJ,{
+          style:f=>{
+            const stt=byTract[Math.round(Number(f.properties.Tract))];
+            return stt
+              ? {color:'#0f1b2a', weight:1.2, fillColor:valColor(stt.avgVal), fillOpacity:.62}
+              : {color:'#0f1b2a', weight:1, fillColor:'#5b6b7d', fillOpacity:.12};
+          },
+          onEachFeature:(f,l)=>{
+            l.bindPopup(()=>{
+              const stt=byTract[Math.round(Number(f.properties.Tract))];
+              return `<div class="pp-title">Census tract ${esc(Number(f.properties.Tract)/100)}</div>`+
+                (stt? `<div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(stt.avgVal)}</span></div>
+                       <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(stt.cnt)}</span></div>
+                       <div class="pp-row"><span class="k">Tip</span><span>zoom in for blocks &amp; lots</span></div>`
+                     : '<i>No matching parcels here</i>');
+            },{maxWidth:300});
+            l.on('mouseover',()=>l.setStyle({weight:2.5,color:'#ffffff'}));
+            l.on('mouseout',()=>newLayer.resetStyle(l));
+          }
+        });
+        stat = fmtNum((st.features||[]).length)+' tracts';
+        }
+      }
+
+      else if(band==='grid'){
+        /* block view: average value per grid cell — blobs inside blobs */
+        const grid = buildGrid(fetchBounds, opt);
+        let n=0;
+        if(PARCELS_FULL){
+          n = PARCELS_FULL.val.length;   // aggregated in buildGrid already
+        } else {
+          for(let off=0; off<8000; off+=2000){
+            const gj = await fetchArcGIS(TAXLOTS,{where, fields:'MktTotVal',
+              bounds:fetchBounds, limit:2000, offset:off, maxOffset:0.004, signal:sig});
+            for(const f of (gj.features||[])){
+              const c0=firstCoord(f.geometry);
+              if(c0){ grid.add(c0[0],c0[1],(f.properties&&f.properties.MktTotVal)||0); n++; }
+            }
+            if((gj.features||[]).length<2000) break;
+          }
+        }
+        const cells = grid.finish();
+        const rects = cells.map(c=>{
+          const r=L.rectangle(c.b,{color:valColor(c.avg), weight:0,
+            fillColor:valColor(c.avg), fillOpacity:.55, interactive:true});
+          r.bindPopup(()=>`<div class="pp-title">Block average</div>
+            <div class="pp-row"><span class="k">Avg value</span><span>${fmtMoney(c.avg)}</span></div>
+            <div class="pp-row"><span class="k">Parcels</span><span>${fmtNum(c.n)}</span></div>`,{maxWidth:260});
+          return r;
+        });
+        newLayer = L.layerGroup(rects);
+        stat = PARCELS_FULL ? fmtNum(cells.length)+' cells (offline)'
+                            : fmtNum(cells.length)+' cells';
+      }
+
+      else { /* band==='poly' — real parcel outlines */
+        const feats=[];
+        for(let off=0; off<10000; off+=2000){
+          const gj = await fetchArcGIS(TAXLOTS,{where, fields:cfg.fields,
+            bounds:fetchBounds, limit:2000, offset:off,
+            maxOffset: z>=17?0:0.00004, signal:sig});
+          feats.push(...(gj.features||[]));
+          if((gj.features||[]).length<2000) break;
+        }
+        newLayer = makeGeoJsonLayer(cfg, {type:'FeatureCollection',features:feats});
+        stat = fmtNum(feats.length)+(feats.length>=10000?'+':'');
+      }
+    }
+    else if(cfg.kind==='overpass'){
+      const els = await fetchOverpass(cfg.filters,{bounds:fetchBounds, signal:sig});
+      const markers = els.map(e=>{
+        const m = L.circleMarker([e.lat,e.lon], circle(cfg.color2||cfg.color,6));
+        m.bindPopup(()=>{
+          const rows=(cfg.tagRows?cfg.tagRows(e.tags):[]).filter(r=>r[1]);
+          return `<div class="pp-title">${esc(cfg.tagTitle?cfg.tagTitle(e.tags):cfg.label)}</div>`+
+            rows.map(([k,v])=>`<div class="pp-row"><span class="k">${esc(k)}</span><span>${v}</span></div>`).join('');
+        },{maxWidth:320});
+        return m;
+      });
+      if(cfg.cluster){
+        newLayer = L.markerClusterGroup({maxClusterRadius:46, showCoverageOnHover:false});
+        newLayer.addLayers(markers);
+      } else newLayer = L.layerGroup(markers);
+      stat = fmtNum(els.length);
+    }
+    else if(cfg.kind==='heat'){
+      const gj = await fetchArcGIS(cfg.url,{limit:2000, fields:'OBJECTID', signal:sig});
+      const pts = (gj.features||[]).map(f=>firstCoord(f.geometry)).filter(Boolean)
+        .map(c=>[c[1],c[0],0.6]);
+      newLayer = L.heatLayer(pts,{radius:22, blur:16, maxZoom:16});
+      stat = fmtNum(pts.length);
+    }
+
+    if(!state[cfg.id].on || s.seq!==myReq) return;
+    if(s.layer && s.layer!==newLayer && map.hasLayer(s.layer)) map.removeLayer(s.layer);
+    if(!map.hasLayer(newLayer)) newLayer.addTo(map);
+    s.layer = newLayer;
+    s.cache = {key, bounds:fetchBounds, stat};
+    setStat(cfg.id, stat);
+  }
+  catch(err){
+    if(err.name==='AbortError') return;
+    console.error(cfg.id, err);
+    setStat(cfg.id,'error',true);
+    toast(`Couldn't load "${cfg.label}" — the data server may be busy. Try again in a moment.`);
+  }
+}
+
+/* re-evaluate layers when the map stops moving (cache makes this cheap) */
+let moveT=null;
+map.on('moveend', ()=>{
+  clearTimeout(moveT);
+  moveT=setTimeout(()=>{
+    for(const cfg of LAYERS){ if(state[cfg.id].on) refreshLayer(cfg); }
+  },350);
+});
+
+/* ---------------- weather (NWS) ---------------- */
+(async function weather(){
+  try{
+    const pt = await (await fetch('https://api.weather.gov/points/45.6387,-122.6615')).json();
+    const fc = await (await fetch(pt.properties.forecast)).json();
+    const periods = fc.properties.periods||[];
+    if(periods.length){
+      const now = periods[0];
+      $('wx-temp').textContent = `${now.temperature}°${now.temperatureUnit}`;
+      $('wx-name').textContent = now.name;
+      $('wx-desc').textContent = now.shortForecast;
+      $('wx-fore').innerHTML = periods.slice(1,7).map(p=>
+        `<div class="wx-day">${esc(p.name.slice(0,9))}<b>${p.temperature}°</b>${esc(p.shortForecast.split(' ').slice(0,2).join(' '))}</div>`).join('');
+    }
+    const al = await (await fetch('https://api.weather.gov/alerts/active?point=45.6387,-122.6615')).json();
+    $('wx-alerts').innerHTML = (al.features||[]).slice(0,3).map(a=>
+      `<div class="wx-alert">⚠ ${esc(a.properties.event)}</div>`).join('');
+  }catch(e){
+    $('wx-desc').textContent='Weather unavailable right now';
+  }
+})();
+
+/* ---------------- search (Nominatim) ---------------- */
+async function doSearch(){
+  const q = $('search-box').value.trim();
+  if(!q) return;
+  try{
+    const u = `https://nominatim.openstreetmap.org/search?format=json&limit=1&viewbox=-122.83,45.75,-122.45,45.53&bounded=1&q=${encodeURIComponent(q)}`;
+    const r = await (await fetch(u)).json();
+    if(!r.length){ toast('No results found near Vancouver — try a street address.'); return; }
+    const {lat,lon,display_name} = r[0];
+    map.setView([+lat,+lon], 17);
+    L.popup().setLatLng([+lat,+lon]).setContent(`<div class="pp-title">📍 ${esc(display_name.split(',').slice(0,3).join(','))}</div>`).openOn(map);
+  }catch(e){ toast('Search failed — check your internet connection.'); }
+}
+$('search-go').onclick=doSearch;
+$('search-box').addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
+
+/* ---------------- misc UI ---------------- */
+$('sb-toggle').onclick = ()=> $('sidebar').classList.toggle('hidden');
+$('btn-home').onclick = ()=> map.setView(HOME.center, HOME.zoom);
+$('btn-refresh').onclick = ()=>{
+  for(const cfg of LAYERS){
+    const s=state[cfg.id];
+    s.cache=null;
+    if(s.on) refreshLayer(cfg,true);
+  }
+  toast('Refreshing active layers with fresh data…');
+};
+$('btn-about').onclick = ()=> $('modal-bg').style.display='flex';
+$('modal-bg').addEventListener('click',e=>{ if(e.target.id==='modal-bg') e.target.style.display='none'; });
+
+let fs=16;
+$('fs-plus').onclick=()=>{ fs=Math.min(fs+2,24); document.documentElement.style.setProperty('--fs',fs+'px'); };
+$('fs-minus').onclick=()=>{ fs=Math.max(fs-2,13); document.documentElement.style.setProperty('--fs',fs+'px'); };
+
+/* ---------------- full-county parcel download ---------------- */
+const DL = {active:false, cancel:false};
+const parcelsCfg = LAYERS.find(l=>l.id==='parcels');
+
+function dlButtonLabel(){
+  const b=$('dl-btn'); if(!b) return;
+  b.textContent = PARCELS_FULL
+    ? `✓ ${fmtNum(PARCELS_FULL.val.length)} parcels saved — tap to re-download`
+    : '⬇ Download whole county (works offline after)';
+}
+
+async function downloadAllParcels(){
+  if(DL.active){ return; }
+  DL.active=true; DL.cancel=false;
+  const box=$('dl-progress'), fill=$('dp-fill'), txt=$('dp-text');
+  box.style.display='block'; fill.style.width='0%'; txt.textContent='counting parcels…';
+  try{
+    const cj = await arcgisStats(TAXLOTS,{where:'MktTotVal>0', returnCountOnly:'true'});
+    const total = cj.count || 200000;
+    const lon=[], lat=[], val=[];
+    for(let off=0; off<total; off+=2000){
+      if(DL.cancel) throw new Error('cancelled');
+      const gj = await fetchArcGIS(TAXLOTS,{where:'MktTotVal>0', fields:'MktTotVal',
+        limit:2000, offset:off, maxOffset:0.004});
+      const feats=gj.features||[];
+      for(const f of feats){
+        const c0=firstCoord(f.geometry);
+        if(c0){ lon.push(c0[0]); lat.push(c0[1]); val.push((f.properties&&f.properties.MktTotVal)||0); }
+      }
+      const pct=Math.min(100, Math.round((off+feats.length)/total*100));
+      fill.style.width=pct+'%';
+      txt.textContent=`${fmtNum(off+feats.length)} / ${fmtNum(total)} (${pct}%)`;
+      if(feats.length<2000) break;
+    }
+    PARCELS_FULL={lon,lat,val};
+    await idbPut('parcels',{ts:Date.now(), lon, lat, val});
+    txt.textContent='done!';
+    toast(`Saved ${fmtNum(val.length)} parcels to this browser — block view is now instant & offline.`);
+    dlButtonLabel();
+    const s=state['parcels']; s.cache=null;
+    if(s.on) refreshLayer(parcelsCfg,true);
+  }catch(e){
+    if(e.message!=='cancelled'){ console.error(e); toast('Download interrupted — you can retry anytime.'); }
+  }finally{
+    DL.active=false;
+    setTimeout(()=>{ box.style.display='none'; },1200);
+  }
+}
+$('dl-btn').onclick = downloadAllParcels;
+$('dp-cancel').onclick = ()=>{ DL.cancel=true; };
+
+/* restore a previous county download from this browser */
+idbGet('parcels').then(saved=>{
+  if(saved && saved.val && saved.val.length){
+    PARCELS_FULL={lon:saved.lon, lat:saved.lat, val:saved.val};
+    dlButtonLabel();
+    const s=state['parcels'];
+    if(s && s.on){ s.cache=null; refreshLayer(parcelsCfg); }
+  }
+});
+
+/* start with a friendly default layer on */
+$('cb-parks').click();
+$('cb-parcels').click();
+</script>
+</body>
+</html>
