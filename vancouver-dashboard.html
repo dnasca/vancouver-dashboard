@@ -452,6 +452,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
 "use strict";
 /* =====================================================================
@@ -997,11 +998,38 @@ const ValueSurface = L.Layer.extend({
         ctx.fillRect(kx*cs-tlX, ky*cs-tlY, cs, cs);
       }
       this._cells=cells;
+    } else if(window.d3 && d3.Delaunay){
+      /* mid zoom: Voronoi parcel approximation — each screen region belongs
+         to its nearest parcel, filled with that parcel's color and stroked
+         with a thin border. Reads like a real parcel map, computed locally
+         in ~100ms. Big rural cells = big rural parcels. */
+      const pts=[], idx=[];
+      for(let i=0;i<val.length;i++){
+        const lo=lon[i], la=lat[i], v=val[i];
+        if(lo<w||lo>e||la<s||la>n) continue;
+        if(!matchVal(opt,v)) continue;
+        pts.push(wpx(lo)-tlX, wpy(la)-tlY);
+        idx.push(i);
+      }
+      if(idx.length){
+        const del=new d3.Delaunay(Float64Array.from(pts));
+        const vor=del.voronoi([-80,-80,sz.x+80,sz.y+80]);
+        ctx.globalAlpha=.66;
+        ctx.strokeStyle='rgba(8,18,32,.45)';
+        ctx.lineWidth=.6;
+        for(let j=0;j<idx.length;j++){
+          ctx.beginPath();
+          vor.renderCell(j, ctx);
+          ctx.fillStyle=valColor(val[idx[j]]);
+          ctx.fill(); ctx.stroke();
+        }
+        this._del=del; this._idx=idx;
+        this._mode='voronoi';
+      }
+      this._cells=null;
     } else {
-      /* mid zoom: pointillism — one crisp square per REAL parcel at its true
-         position. Roads appear as natural gaps; an expensive lot is a small
-         precise gold dot, not a noisy block. Instant, no server. */
-      const ps = z===13?3 : z===14?5 : 7; this._ps=ps;
+      /* fallback if d3 failed to load: one crisp square per parcel */
+      const ps = z===13?3 : z===14?5 : 7;
       const h=ps/2;
       ctx.globalAlpha=.8;
       for(let i=0;i<val.length;i++){
@@ -1022,23 +1050,32 @@ map.on('click', e=>{
   const scale=256*Math.pow(2,VS._z);
   const px=(e.latlng.lng+180)/360*scale;
   const py=(1 - Math.log(Math.tan(Math.PI/4 + e.latlng.lat*Math.PI/360))/Math.PI)/2*scale;
-  if(VS._mode==='points' && PARCELS_FULL){
-    /* nearest parcel within ~10px */
-    const {lon,lat,val}=PARCELS_FULL;
-    let best=-1, bd=100;
-    for(let i=0;i<val.length;i++){
-      const dx=(lon[i]+180)/360*scale - px;
-      if(dx>10||dx<-10) continue;
-      const dy=(1 - Math.log(Math.tan(Math.PI/4 + lat[i]*Math.PI/360))/Math.PI)/2*scale - py;
-      if(dy>10||dy<-10) continue;
-      const d=dx*dx+dy*dy;
-      if(d<bd){ bd=d; best=i; }
+  if((VS._mode==='voronoi'||VS._mode==='points') && PARCELS_FULL){
+    let best=-1;
+    if(VS._mode==='voronoi' && VS._del){
+      const p=map.latLngToContainerPoint(e.latlng);
+      const j=VS._del.find(p.x, p.y);
+      if(j>=0){
+        const dx=VS._del.points[2*j]-p.x, dy=VS._del.points[2*j+1]-p.y;
+        if(dx*dx+dy*dy<3600) best=VS._idx[j];   // within 60px
+      }
+    } else {
+      const {lon,lat,val}=PARCELS_FULL;
+      let bd=100;
+      for(let i=0;i<val.length;i++){
+        const dx=(lon[i]+180)/360*scale - px;
+        if(dx>10||dx<-10) continue;
+        const dy=(1 - Math.log(Math.tan(Math.PI/4 + lat[i]*Math.PI/360))/Math.PI)/2*scale - py;
+        if(dy>10||dy<-10) continue;
+        const d=dx*dx+dy*dy;
+        if(d<bd){ bd=d; best=i; }
+      }
     }
     if(best<0) return;
     L.popup().setLatLng(e.latlng).setContent(
-      `<div class="pp-title">Parcel</div>
+      `<div class="pp-title">Parcel (approximate cell)</div>
        <div class="pp-row"><span class="k">Market value</span><span>${fmtMoney(PARCELS_FULL.val[best])}</span></div>
-       <div class="pp-row"><span class="k">Tip</span><span>zoom in for full details</span></div>`).openOn(map);
+       <div class="pp-row"><span class="k">Tip</span><span>zoom in for exact outlines</span></div>`).openOn(map);
     return;
   }
   if(!VS._cells) return;
@@ -1085,7 +1122,7 @@ async function refreshLayer(cfg, force){
                   (cfg.kind==='parcels' && (band==='grid'||band==='poly'));
 
   if(cfg.kind==='parcels') $('vl-band').textContent =
-    band==='surface'?(z<=12?'Neighborhood blocks · stable county-wide field':'Parcel pointillism · one square per lot — zoom for outlines'):
+    band==='surface'?(z<=12?'Neighborhood blocks · stable county-wide field':'Parcel borders (approx) · one cell per lot — zoom for exact outlines'):
     band==='tract'?'Neighborhood view · avg per census tract':
     band==='grid'?'Block view · avg per cell — zoom for parcels':'Parcel view · individual lots';
 
