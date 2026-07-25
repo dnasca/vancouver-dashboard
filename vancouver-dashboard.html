@@ -37,50 +37,58 @@
 
   /* ============ sidebar shell ============ */
   #sidebar{
-    position:absolute; top:14px; left:14px; z-index:1300;
-    width:336px; max-width:calc(100vw - 28px);
+    position:absolute; top:12px; left:12px; z-index:1300;
+    width:300px; max-width:calc(100vw - 24px);
     display:flex; flex-direction:column;
-    background:linear-gradient(180deg, rgba(19,34,57,.92), rgba(10,19,34,.96));
+    background:linear-gradient(180deg, rgba(17,31,52,.93), rgba(10,19,34,.96));
     backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
-    border:1px solid var(--stroke); border-radius:17px;
+    border:1px solid var(--stroke); border-radius:13px;
     box-shadow:var(--shadow);
   }
   #sb-head{
-    padding:18px 18px 14px; position:relative;
-    background:linear-gradient(180deg, rgba(77,163,255,.09), transparent);
+    padding:13px 14px 11px; position:relative;
     border-bottom:1px solid var(--stroke);
   }
-  #sb-head::after{content:""; position:absolute; left:16px; right:16px; bottom:-1px; height:1px;
-    background:linear-gradient(90deg, transparent, rgba(126,178,255,.55), transparent);}
-  #sb-head h1{font-size:1.05em; line-height:1.25; letter-spacing:-.01em;}
-  #sb-head h1 .city{font-size:.72em; font-weight:600; text-transform:uppercase; letter-spacing:.22em; color:var(--muted);}
+  #sb-head h1{font-size:1em; line-height:1.2; letter-spacing:-.01em;}
+  #sb-head h1 .city{font-size:.62em; font-weight:600; text-transform:uppercase; letter-spacing:.2em; color:var(--muted);}
   #sb-head h1 .grad{
-    font-size:1.45em; font-weight:800;
-    background:linear-gradient(92deg,var(--accent2),var(--accent) 55%,var(--good));
+    font-size:1.16em; font-weight:700;
+    background:linear-gradient(92deg,var(--accent2),var(--accent) 60%,var(--good));
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  #sb-head .sub{color:var(--muted); font-size:.8em; margin-top:4px;}
-  #controls-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  #sb-head .sub{display:none;}
+  /* icon-only utility strip replaces the row of chunky pills */
+  #controls-row{display:flex; gap:4px; margin-top:10px;}
+  #controls-row .ibtn{flex:1;}
 
   .btn{
-    background:linear-gradient(180deg, rgba(52,84,128,.5), rgba(30,52,84,.5));
-    color:var(--ink); border:1px solid var(--stroke); border-radius:11px;
-    padding:9px 13px; min-height:44px; cursor:pointer; font-size:.85em; font-weight:600;
-    letter-spacing:.01em; box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
-    transition:border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease), background .18s var(--ease);
+    background:rgba(46,76,118,.42);
+    color:var(--ink); border:1px solid var(--stroke); border-radius:8px;
+    padding:7px 11px; min-height:34px; cursor:pointer; font-size:.82em; font-weight:600;
+    letter-spacing:.01em;
+    transition:border-color .16s var(--ease), background .16s var(--ease), color .16s var(--ease);
   }
-  .btn:hover{border-color:var(--stroke2); box-shadow:var(--glow), inset 0 1px 0 rgba(255,255,255,.08); transform:translateY(-1px);}
-  .btn:active{transform:translateY(0); box-shadow:none;}
+  .btn:hover{border-color:var(--stroke2); background:rgba(60,96,146,.5);}
+  .btn:active{background:rgba(38,64,100,.6);}
+  /* compact square icon button */
+  .ibtn{
+    display:flex; align-items:center; justify-content:center;
+    min-height:30px; height:30px; padding:0; font-size:.78em; font-weight:600;
+    background:transparent; border:1px solid transparent; border-radius:7px;
+    color:var(--muted); cursor:pointer;
+    transition:background .16s var(--ease), color .16s var(--ease), border-color .16s var(--ease);
+  }
+  .ibtn:hover{background:rgba(88,132,190,.18); color:var(--ink); border-color:var(--stroke);}
 
-  #search-row{display:flex; gap:8px; padding:12px 16px 6px;}
+  #search-row{display:flex; gap:6px; padding:10px 14px 4px;}
   #search-box{
-    flex:1; min-height:44px; padding:9px 14px; border-radius:11px; font-size:.95em;
+    flex:1; min-height:34px; padding:7px 11px; border-radius:8px; font-size:.86em;
     border:1px solid var(--stroke); background:rgba(9,17,30,.6); color:var(--ink);
-    transition:border-color .18s, box-shadow .18s;
+    transition:border-color .16s, box-shadow .16s;
   }
   #search-box::placeholder{color:var(--muted);}
-  #search-box:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(77,163,255,.22);}
-  #sb-body{padding:2px 14px 14px;}
+  #search-box:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(77,163,255,.2);}
+  #sb-body{padding:2px 12px 12px;}
   #sb-body::-webkit-scrollbar{width:8px;}
   #sb-body::-webkit-scrollbar-thumb{background:rgba(126,178,255,.25); border-radius:4px;}
   #sb-body::-webkit-scrollbar-thumb:hover{background:rgba(126,178,255,.45);}
@@ -90,14 +98,14 @@
     --wxg:linear-gradient(140deg, rgba(77,163,255,.20), rgba(20,40,70,.08));
     position:relative; overflow:hidden; cursor:pointer;
     background:var(--wxg), linear-gradient(160deg,#17324f,#0e1f36);
-    border:1px solid var(--stroke); border-radius:13px; padding:9px 12px; margin:8px 0 10px;
-    box-shadow:0 4px 14px rgba(2,8,20,.3); transition:background .6s, border-color .18s;
+    border:1px solid var(--stroke); border-radius:9px; padding:7px 11px; margin:8px 0 9px;
+    transition:background .6s, border-color .18s;
   }
   #weather:hover{border-color:var(--stroke2);}
-  #weather .wx-temp{font-size:1.5em!important;}
+  #weather .wx-temp{font-size:1.25em!important;}
   #weather .wx-desc{display:none;}
   #weather #wx-fore{display:none;}
-  #weather.expanded{padding:14px 16px; border-radius:16px; box-shadow:var(--shadow);}
+  #weather.expanded{padding:13px 15px; border-radius:12px; box-shadow:var(--shadow);}
   #weather.expanded .wx-temp{font-size:2.4em!important;}
   #weather.expanded .wx-desc{display:block;}
   #weather.expanded #wx-fore{display:flex;}
@@ -108,7 +116,7 @@
   #weather[data-wx="cloud"]{--wxg:linear-gradient(140deg, rgba(152,172,198,.22), rgba(74,94,120,.10));}
   #weather[data-wx="snow"]{--wxg:linear-gradient(140deg, rgba(205,228,255,.28), rgba(126,166,214,.12));}
   #weather[data-wx="storm"]{--wxg:linear-gradient(140deg, rgba(154,114,255,.30), rgba(74,54,144,.14));}
-  #weather .wx-now{display:flex; align-items:center; gap:14px; position:relative;}
+  #weather .wx-now{display:flex; align-items:center; gap:11px; position:relative;}
   #weather .wx-temp{
     font-size:2.7em; font-weight:800; letter-spacing:-.03em; line-height:1;
     background:linear-gradient(180deg,#ffffff,var(--accent2));
@@ -131,8 +139,8 @@
   /* ============ layer groups ============ */
   #groups{position:relative;}
   .group{
-    position:absolute; top:6px; left:0; width:320px; max-width:calc(100vw - 42px);
-    border:1px solid var(--stroke); border-radius:14px;
+    position:absolute; top:5px; left:0; width:288px; max-width:calc(100vw - 38px);
+    border:1px solid var(--stroke); border-radius:11px;
     background:linear-gradient(180deg, rgba(19,34,57,.97), rgba(10,19,34,.99));
     backdrop-filter:blur(20px) saturate(1.3); -webkit-backdrop-filter:blur(20px) saturate(1.3);
     box-shadow:var(--shadow);
@@ -147,6 +155,7 @@
     transition:color .18s, background .18s;
   }
   .group-h:hover{background:var(--panel2); color:var(--ink);}
+  .group-h{font-size:.76em;}
   .group.open .group-h{color:var(--ink);}
   .group-h .chev{transition:transform .2s var(--ease); color:var(--accent); font-size:.85em;}
   .group.open .chev{transform:rotate(90deg);}
@@ -156,24 +165,23 @@
   .gi-inner{overflow:hidden; min-height:0; padding:0 6px;}
   .group.open .gi-inner{padding-bottom:6px;}
 
-  .layer-row{display:flex; align-items:center; gap:10px; min-height:48px; padding:6px 8px; border-radius:11px; transition:background .15s var(--ease);}
+  .layer-row{display:flex; align-items:center; gap:9px; min-height:40px; padding:4px 7px; border-radius:9px; transition:background .15s var(--ease);}
   .layer-row:hover{background:var(--panel2);}
   .layer-row label{flex:1; cursor:pointer; display:flex; align-items:center; gap:10px; min-width:0;}
-  .layer-row .lname{font-size:.9em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .layer-row .lname{font-size:.83em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .icon-chip{
-    width:32px; height:32px; flex:none; display:flex; align-items:center; justify-content:center;
-    border-radius:9px; font-size:15px; line-height:1;
+    width:26px; height:26px; flex:none; display:flex; align-items:center; justify-content:center;
+    border-radius:7px; font-size:13px; line-height:1;
     background:color-mix(in srgb, var(--lc) 16%, transparent);
-    border:1px solid color-mix(in srgb, var(--lc) 42%, transparent);
-    box-shadow:0 0 10px color-mix(in srgb, var(--lc) 22%, transparent);
+    border:1px solid color-mix(in srgb, var(--lc) 40%, transparent);
   }
-  .sw{position:relative; width:46px; height:26px; flex:none;}
+  .sw{position:relative; width:38px; height:21px; flex:none;}
   .sw input{opacity:0; width:0; height:0; position:absolute;}
   .sl{position:absolute; inset:0; background:rgba(44,74,110,.65); border:1px solid var(--stroke); border-radius:26px; transition:.2s var(--ease); cursor:pointer;}
-  .sl:before{content:""; position:absolute; width:18px; height:18px; left:3px; top:3px;
-    background:#c8d9ec; border-radius:50%; transition:.2s var(--ease); box-shadow:0 2px 6px rgba(0,0,0,.45);}
-  .sw input:checked + .sl{background:linear-gradient(90deg,#2f7fd6,var(--accent)); border-color:var(--accent); box-shadow:0 0 12px rgba(77,163,255,.45);}
-  .sw input:checked + .sl:before{transform:translateX(20px); background:#fff;}
+  .sl:before{content:""; position:absolute; width:15px; height:15px; left:2px; top:2px;
+    background:#c8d9ec; border-radius:50%; transition:.2s var(--ease); box-shadow:0 1px 4px rgba(0,0,0,.45);}
+  .sw input:checked + .sl{background:var(--accent); border-color:var(--accent);}
+  .sw input:checked + .sl:before{transform:translateX(16px); background:#fff;}
   .sw input:focus-visible + .sl{outline:2px solid var(--accent); outline-offset:2px;}
   .lstat{font-size:.7em; color:var(--muted); min-width:52px; text-align:right; font-variant-numeric:tabular-nums;}
   .lstat.err{color:var(--bad); font-weight:700;}
@@ -186,17 +194,16 @@
   select.mini:hover{border-color:var(--stroke2);}
 
   /* ============ circular group nav ============ */
-  #group-nav{display:flex; gap:10px; padding:4px 0 2px;}
+  #group-nav{display:flex; gap:7px; padding:2px 0 0;}
   .circle-btn{
-    position:relative; width:50px; height:50px; border-radius:50%; flex:none;
-    display:flex; align-items:center; justify-content:center; font-size:1.3em;
-    background:linear-gradient(180deg, rgba(52,84,128,.5), rgba(30,52,84,.5));
+    position:relative; width:42px; height:42px; border-radius:12px; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:1.1em;
+    background:rgba(46,76,118,.38);
     border:1px solid var(--stroke); cursor:pointer; color:var(--ink);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
-    transition:border-color .18s var(--ease), box-shadow .18s var(--ease), transform .18s var(--ease), background .18s var(--ease);
+    transition:border-color .16s var(--ease), background .16s var(--ease);
   }
-  .circle-btn:hover{transform:translateY(-2px); border-color:var(--stroke2); box-shadow:var(--glow);}
-  .circle-btn.active{background:linear-gradient(180deg,#5aabff,#3d8fe4); border-color:var(--accent); box-shadow:0 0 18px rgba(77,163,255,.5);}
+  .circle-btn:hover{border-color:var(--stroke2); background:rgba(60,96,146,.5);}
+  .circle-btn.active{background:var(--accent); border-color:var(--accent); color:#06233d;}
   .circle-badge{
     position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 4px;
     border-radius:9px; background:var(--good); color:#04231a; font-size:.62em; font-weight:800;
@@ -306,16 +313,77 @@
   }
   @keyframes toastIn{from{opacity:0; transform:translate(-50%,14px);} to{opacity:1; transform:translate(-50%,0);}}
 
-  /* property value legend */
-  #val-legend{
-    position:absolute; bottom:28px; left:14px; z-index:1000; width:216px; display:none;
-    background:var(--panel); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
-    border:1px solid var(--stroke); border-radius:13px; padding:12px 15px; box-shadow:var(--shadow);
+  /* ---------- active layer stack (bottom-left) ----------
+     One card per layer that's currently on: its legend/detail, its live
+     count, and an X that turns it off without opening any menu. */
+  #active-stack{
+    position:absolute; bottom:24px; left:12px; z-index:1000; width:232px;
+    display:flex; flex-direction:column-reverse; gap:7px;
+    max-height:min(56vh, 520px); overflow-y:auto; overflow-x:hidden;
+    padding:2px; scrollbar-width:thin;
   }
-  #val-legend .vl-title{font-size:.74em; font-weight:700; text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; color:var(--accent2);}
-  #val-legend .vl-band{font-size:.68em; color:var(--muted); margin-bottom:7px;}
-  #val-legend .vl-bar{height:10px; border-radius:5px; background:linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725);}
-  #val-legend .vl-labels{display:flex; justify-content:space-between; font-size:.65em; color:var(--muted); margin-top:4px;}
+  #active-stack::-webkit-scrollbar{width:6px;}
+  #active-stack::-webkit-scrollbar-thumb{background:rgba(126,178,255,.25); border-radius:3px;}
+  .al-card{
+    background:linear-gradient(180deg, rgba(19,34,57,.93), rgba(11,21,37,.95));
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    border:1px solid var(--stroke); border-left:3px solid var(--lc,var(--accent));
+    border-radius:10px; box-shadow:0 6px 18px rgba(2,8,20,.45);
+    animation:alIn .22s var(--ease);
+  }
+  @keyframes alIn{from{opacity:0; transform:translateX(-10px);} to{opacity:1; transform:none;}}
+  .al-head{display:flex; align-items:center; gap:8px; padding:8px 8px 8px 10px; cursor:pointer;}
+  .al-head:hover{background:rgba(88,132,190,.1);}
+  .al-ico{font-size:.95em; flex:none;}
+  .al-name{flex:1; font-size:.76em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .al-n{font-size:.68em; color:var(--muted); font-variant-numeric:tabular-nums; flex:none;}
+  .al-chev{font-size:.55em; color:var(--muted); flex:none; transition:transform .2s var(--ease);}
+  .al-card.open .al-chev{transform:rotate(90deg);}
+  .al-x{
+    flex:none; width:20px; height:20px; border-radius:6px; border:none; cursor:pointer;
+    background:transparent; color:var(--muted); font-size:.8em; line-height:1;
+    display:flex; align-items:center; justify-content:center; transition:background .15s, color .15s;
+  }
+  .al-x:hover{background:rgba(255,92,114,.2); color:var(--bad);}
+  .al-body{display:none; padding:0 10px 10px; font-size:.7em; color:var(--muted); line-height:1.5;}
+  .al-card.open .al-body{display:block;}
+  .al-bar{height:9px; border-radius:5px; margin-top:5px;
+    background:linear-gradient(90deg,#440154,#3b528b,#21918c,#5ec962,#fde725);}
+  .al-labels{display:flex; justify-content:space-between; font-size:.9em; margin-top:3px;}
+  .al-kv{display:flex; justify-content:space-between; gap:8px; padding:2px 0;}
+  .al-kv b{color:var(--ink); font-weight:600;}
+  .al-dot{display:inline-block; width:9px; height:9px; border-radius:50%;
+    background:var(--lc,var(--accent)); margin-right:5px; vertical-align:-1px;}
+  .al-clear{
+    width:100%; padding:5px; font-size:.68em; color:var(--muted); cursor:pointer;
+    background:rgba(11,21,37,.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border:1px dashed var(--stroke); border-radius:8px; transition:color .15s, border-color .15s;
+  }
+  .al-clear:hover{color:var(--bad); border-color:rgba(255,92,114,.5);}
+
+  /* ---------- guided tour ---------- */
+  #tour{position:fixed; inset:0; z-index:3000; display:none;}
+  #tour.show{display:block;}
+  /* the spotlight is a transparent box with an enormous shadow, so
+     everything except the highlighted element is dimmed */
+  #tour-spot{
+    position:absolute; border-radius:14px; pointer-events:none;
+    box-shadow:0 0 0 9999px rgba(3,8,17,.72), 0 0 0 2px var(--accent), 0 0 26px rgba(77,163,255,.55);
+    transition:top .3s var(--ease), left .3s var(--ease), width .3s var(--ease), height .3s var(--ease);
+  }
+  #tour-tip{
+    position:absolute; width:290px; max-width:calc(100vw - 24px);
+    background:linear-gradient(180deg, rgba(21,37,62,.98), rgba(13,24,42,.98));
+    border:1px solid var(--stroke2); border-radius:13px; padding:15px 17px;
+    box-shadow:var(--shadow); transition:top .3s var(--ease), left .3s var(--ease);
+  }
+  #tour-tip h4{font-size:.92em; margin-bottom:6px; color:var(--accent2);}
+  #tour-tip p{font-size:.82em; color:#cfe0f2; line-height:1.55;}
+  #tour-foot{display:flex; align-items:center; gap:8px; margin-top:13px;}
+  #tour-step{font-size:.72em; color:var(--muted); flex:1; font-variant-numeric:tabular-nums;}
+  #tour-tip .btn{min-height:30px; padding:6px 11px; font-size:.78em;}
+  #tour-tip .btn.pri{background:var(--accent); color:#06233d; border-color:var(--accent);}
+  #tour-tip .btn.pri:hover{background:var(--accent2);}
 
   /* ---------- Insight rail ---------- */
   #insight{
@@ -350,6 +418,19 @@
   .ins-hist{width:100%; height:74px; margin-top:6px; border-radius:6px;}
   .ins-empty{font-size:.8em; color:var(--muted); text-align:center; padding:28px 12px; line-height:1.6;}
   .ins-note{font-size:.68em; color:var(--muted); margin-top:8px; font-style:italic;}
+  /* standing disclaimer: every number in this rail is viewport-scoped */
+  #ins-scope{
+    margin:12px 14px 0; padding:8px 11px; border-radius:9px;
+    background:rgba(77,163,255,.10); border:1px solid rgba(77,163,255,.28);
+    font-size:.71em; color:#bcd6f2; line-height:1.5; display:flex; gap:7px;
+  }
+  #ins-scope b{color:var(--accent2);}
+  #dash-scope{
+    margin-bottom:18px; padding:10px 14px; border-radius:10px; max-width:640px;
+    background:rgba(77,163,255,.10); border:1px solid rgba(77,163,255,.28);
+    font-size:.82em; color:#bcd6f2; line-height:1.5;
+  }
+  #dash-scope b{color:var(--accent2);}
   #insight-tab{
     position:absolute; top:50%; right:0; transform:translateY(-50%); z-index:1001;
     background:var(--panel); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
@@ -412,15 +493,19 @@
     #sidebar{top:10px; left:10px; width:min(320px,calc(100vw - 20px));}
     .circle-btn{width:44px; height:44px; font-size:1.15em;}
     .group{width:min(300px, calc(100vw - 40px));}
-    #val-legend{bottom:88px;}
+    #active-stack{bottom:80px; width:200px; max-height:40vh;}
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important;}
   }
   /* mode nav (Map / Dashboard) */
-  #mode-nav{display:flex; gap:8px; margin:12px 0 2px;}
-  #mode-nav .btn{flex:1; font-weight:600;}
-  #mode-nav .btn.on{background:linear-gradient(180deg,#5aabff,#3d8fe4); color:#04203c; box-shadow:0 0 14px rgba(77,163,255,.5);}
+  /* segmented control instead of two big pills */
+  #mode-nav{display:flex; gap:2px; margin:10px 0 0; padding:2px;
+    background:rgba(9,17,30,.55); border:1px solid var(--stroke); border-radius:9px;}
+  #mode-nav .btn{flex:1; min-height:28px; padding:5px 8px; font-size:.78em;
+    background:transparent; border:none; color:var(--muted); border-radius:7px;}
+  #mode-nav .btn:hover{background:rgba(88,132,190,.16); color:var(--ink);}
+  #mode-nav .btn.on{background:var(--accent); color:#06233d;}
 
   /* dashboard page */
   #dashboard{flex:1; height:100%; overflow-y:auto; display:none; padding:30px 40px 60px;}
@@ -470,11 +555,12 @@
         <button class="btn" id="mode-dash">📊 Dashboard</button>
       </div>
       <div id="controls-row">
-        <button class="btn" id="fs-minus" title="Smaller text">A−</button>
-        <button class="btn" id="fs-plus" title="Larger text">A+</button>
-        <button class="btn" id="btn-home">⌂ Reset view</button>
-        <button class="btn" id="btn-refresh" title="Clear cache and reload active layers">⟳ Refresh</button>
-        <button class="btn" id="btn-about">ℹ About</button>
+        <button class="ibtn" id="btn-help" title="Show me around">? Help</button>
+        <button class="ibtn" id="btn-home" title="Reset the map to the starting view">⌂</button>
+        <button class="ibtn" id="btn-refresh" title="Clear cache and reload active layers">⟳</button>
+        <button class="ibtn" id="fs-minus" title="Smaller text">A−</button>
+        <button class="ibtn" id="fs-plus" title="Larger text">A+</button>
+        <button class="ibtn" id="btn-about" title="About this dashboard &amp; data sources">ℹ</button>
       </div>
     </div>
     <div id="search-row">
@@ -539,14 +625,24 @@
     </div>
     <button id="ins-close" title="Collapse">✕</button>
   </div>
+  <div id="ins-scope"><span>📍</span><span>Every number here describes <b>only what's inside the map window right now</b>. Pan or zoom and they recalculate — they are not city or county totals.</span></div>
   <div id="ins-cards"></div>
 </aside>
 
-<div id="val-legend">
-  <div class="vl-title">Property value</div>
-  <div class="vl-band" id="vl-band"></div>
-  <div class="vl-bar"></div>
-  <div class="vl-labels"><span>$100k</span><span>$450k</span><span>$2M+</span></div>
+<div id="active-stack"></div>
+
+<div id="tour">
+  <div id="tour-spot"></div>
+  <div id="tour-tip">
+    <h4 id="tour-title"></h4>
+    <p id="tour-body"></p>
+    <div id="tour-foot">
+      <span id="tour-step"></span>
+      <button class="btn" id="tour-skip">Skip</button>
+      <button class="btn" id="tour-prev">Back</button>
+      <button class="btn pri" id="tour-next">Next</button>
+    </div>
+  </div>
 </div>
 
 <div id="dl-progress">
@@ -965,7 +1061,6 @@ for(const cfg of LAYERS){
   state[cfg.id]={on:false, layer:null, ctrl:null, cache:null, seq:0};
   $(`cb-${cfg.id}`).addEventListener('change', e=>{
     state[cfg.id].on = e.target.checked;
-    if(cfg.id==='parcels') $('val-legend').style.display = e.target.checked?'block':'none';
     if(e.target.checked) refreshLayer(cfg); else hideLayer(cfg);
     if(cfg.id==='crime') ensureCityLimits(e.target.checked);
     updateInsights();
@@ -978,7 +1073,88 @@ for(const cfg of LAYERS){
 function setStat(id, txt, err){ const el=$(`st-${id}`);
   if(txt==='loading\u2026') el.innerHTML='<span class="skel" role="status" aria-label="loading"></span>';
   else el.textContent=txt;
-  el.classList.toggle('err',!!err); }
+  el.classList.toggle('err',!!err);
+  renderActiveStack(); }
+
+/* ---------------- active layer stack ----------------
+   Bottom-left: one card per active layer. Each carries that layer's
+   legend/detail and an X that turns it off directly — no hunting back
+   through the group menus to switch something off. Expanded/collapsed
+   state is remembered per layer id across re-renders. */
+let PARCEL_BAND = '';
+const AL_OPEN = new Set(['parcels']);   // parcels opens by default (it has a legend)
+
+/* per-layer detail body; '' means header-only card */
+function alBody(cfg){
+  const s = state[cfg.id];
+  if(cfg.id==='parcels'){
+    return `<div>${esc(PARCEL_BAND||'Loading detail level…')}</div>
+      <div class="al-bar"></div>
+      <div class="al-labels"><span>$100k</span><span>$450k</span><span>$2M+</span></div>`;
+  }
+  if(cfg.id==='crime'){
+    return `<div class="al-kv"><span>Coverage</span><b>City of Vancouver</b></div>
+      <div class="al-kv"><span>Year</span><b>${esc(cfg.controlValue||'2024')}</b></div>
+      <div class="al-kv"><span>Source</span><b>VPD</b></div>
+      <div style="margin-top:5px">Dashed amber line = the edge of the data, not the edge of crime.</div>`;
+  }
+  if(cfg.id==='collisions'){
+    return `<div class="al-kv"><span>Source</span><b>WSDOT via Clark County</b></div>
+      <div style="margin-top:5px">Counts reflect only the collisions inside the current map window.</div>`;
+  }
+  const bits = [`<div class="al-kv"><span>Shown</span><b>${esc(s&&s.cache?s.cache.stat:'—')}</b></div>`];
+  if(cfg.minZoom) bits.push(`<div class="al-kv"><span>Needs zoom</span><b>z${cfg.minZoom}+</b></div>`);
+  bits.push(`<div style="margin-top:5px"><span class="al-dot"></span>Map color for this layer</div>`);
+  return bits.join('');
+}
+
+function renderActiveStack(){
+  const el = $('active-stack');
+  if(!el) return;
+  const active = LAYERS.filter(c=>state[c.id] && state[c.id].on);
+  if(!active.length){ el.innerHTML=''; return; }
+  /* column-reverse container: newest card sits on top, clear-all at the bottom
+     of the DOM renders visually above the stack */
+  let html = active.map(cfg=>{
+    const s = state[cfg.id];
+    const stat = (s.cache && s.cache.stat) || '';
+    const open = AL_OPEN.has(cfg.id);
+    const body = alBody(cfg);
+    return `<div class="al-card${open?' open':''}" data-id="${cfg.id}" style="--lc:${cfg.color}">
+      <div class="al-head" data-act="toggle">
+        <span class="al-ico">${ICONS[cfg.id]||'\u{1F4CD}'}</span>
+        <span class="al-name">${esc(cfg.label)}</span>
+        <span class="al-n">${esc(stat)}</span>
+        ${body?'<span class="al-chev">\u25B6</span>':''}
+        <button class="al-x" data-act="off" title="Turn off ${esc(cfg.label)}" aria-label="Turn off ${esc(cfg.label)}">\u2715</button>
+      </div>
+      ${body?`<div class="al-body">${body}</div>`:''}
+    </div>`;
+  }).join('');
+  if(active.length>1) html += `<button class="al-clear" id="al-clear">\u2715 Turn off all ${active.length} layers</button>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll('.al-card').forEach(card=>{
+    const id = card.dataset.id;
+    card.querySelector('.al-x').addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const cb = $(`cb-${id}`);
+      if(cb && cb.checked){ cb.checked=false; cb.dispatchEvent(new Event('change')); }
+    });
+    const head = card.querySelector('.al-head');
+    if(card.querySelector('.al-body')) head.addEventListener('click', ()=>{
+      if(AL_OPEN.has(id)) AL_OPEN.delete(id); else AL_OPEN.add(id);
+      card.classList.toggle('open');
+    });
+  });
+  const clr = $('al-clear');
+  if(clr) clr.addEventListener('click', ()=>{
+    for(const cfg of active){
+      const cb = $(`cb-${cfg.id}`);
+      if(cb && cb.checked){ cb.checked=false; cb.dispatchEvent(new Event('change')); }
+    }
+  });
+}
 
 /* Toggle OFF = hide only. Data stays cached; toggling back on is instant. */
 function hideLayer(cfg){
@@ -1279,7 +1455,7 @@ async function refreshLayer(cfg, force){
                   (cfg.kind==='parcels' && (band==='grid'||band==='poly'));
   const padAmt = band==='poly' ? 0.3 : 0.6;
 
-  if(cfg.kind==='parcels') $('vl-band').textContent =
+  if(cfg.kind==='parcels') PARCEL_BAND =
     band==='surface'?(z<=12?'Neighborhood blocks · stable county-wide field':'Parcel borders (approx) · one cell per lot — zoom for exact outlines'):
     band==='tract'?'Neighborhood view · avg per census tract':
     band==='grid'?'Block view · avg per cell — zoom for parcels':'Parcel view · individual lots';
@@ -1646,6 +1822,7 @@ function updateInsights(){
     drawHist(b);
   }
   if(currentMode==='dashboard') renderDashboard();
+  renderActiveStack();
   updateGroupBadges();
 }
 $('insight-tab').onclick=()=>{ insOpen=true; $('insight').classList.add('open'); $('insight-tab').style.display='none'; updateInsights(); };
@@ -1718,8 +1895,9 @@ function renderDashboard(){
   $('dashboard').innerHTML = `
     <div id="dash-head">
       <h2>📊 Vancouver, WA — Dashboard</h2>
-      <div class="sub">Live stats for your active layers · property values reflect the map's last position</div>
+      <div class="sub">Live stats for your active layers</div>
     </div>
+    <div id="dash-scope">📍 These numbers describe <b>only the area the map was showing when you switched over</b> — not city or county totals. Go back to the map, move to a different area, and these recalculate.</div>
     ${filled.length ? `<div id="dash-grid">${filled.join('')}</div>`
       : `<div class="ins-empty" style="padding:60px 20px;font-size:.95em;">Turn on layers in the left panel — Crime, Property Values, Parks, Restaurants, anything — and cards will appear here.</div>`}
   `;
@@ -1821,6 +1999,107 @@ async function doSearch(){
 $('search-go').onclick=doSearch;
 $('search-box').addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
 
+/* ---------------- guided tour ----------------
+   Coach marks that point at the real elements rather than describing
+   them in prose. Steps whose target isn't on screen are skipped, so the
+   tour never spotlights an empty rectangle. */
+const TOUR = [
+  {sel:'#group-nav', title:'Layers live behind these four buttons',
+   body:'Safety, Property &amp; Land, Getting Around, Life &amp; Leisure. Tap one and its panel drops down with the switches inside. The little number on a button counts how many of its layers are currently on.',
+   pos:'right'},
+  {sel:'#active-stack', title:'What\u2019s on the map right now',
+   body:'Every layer you turn on adds a card here, with its legend and a live count. Click a card to expand it \u2014 or hit its \u2715 to switch that layer off without going back into the menus.',
+   pos:'right', needsLayer:true},
+  {sel:'#insight-tab', title:'Insights: the numbers behind the map',
+   body:'Open this rail for live stats \u2014 median property value, crime breakdown, collision counts. Important: everything in there measures <b>only what\u2019s inside the map window</b>, so it changes as you pan and zoom.',
+   pos:'left'},
+  {sel:'#search-row', title:'Jump to an address',
+   body:'Type any Vancouver-area address or place name and the map flies there. Handy before turning on the detailed layers, which ask you to zoom in first.',
+   pos:'right'},
+  {sel:'#mode-nav', title:'Map or Dashboard',
+   body:'Dashboard shows the same live stats as full-page cards instead of a side rail \u2014 same viewport-scoped numbers, more room to read them.',
+   pos:'right'},
+  {sel:'#crime-badge', title:'Where the data stops',
+   body:'When a layer only covers part of the county, the map says so. Crime data is Vancouver Police only \u2014 tap this badge to see who covers the rest and why their data isn\u2019t here.',
+   pos:'below', needsVisible:true}
+];
+let tourI = 0, tourSteps = [];
+
+function tourVisible(step){
+  const el = document.querySelector(step.sel);
+  if(!el) return false;
+  const r = el.getBoundingClientRect();
+  if(r.width < 4 || r.height < 4) return false;
+  if(step.needsVisible && getComputedStyle(el).display==='none') return false;
+  return true;
+}
+
+function startTour(){
+  tourSteps = TOUR.filter(s=>{
+    if(s.needsLayer && !LAYERS.some(c=>state[c.id] && state[c.id].on)) return false;
+    return tourVisible(s);
+  });
+  if(!tourSteps.length){ toast('Nothing to point at yet \u2014 try turning on a layer first.'); return; }
+  tourI = 0;
+  $('tour').classList.add('show');
+  showTourStep();
+}
+
+function showTourStep(){
+  const step = tourSteps[tourI];
+  const el = document.querySelector(step.sel);
+  if(!el){ endTour(); return; }
+  const r = el.getBoundingClientRect();
+  const pad = 8;
+  const spot = $('tour-spot');
+  spot.style.top = (r.top-pad)+'px';
+  spot.style.left = (r.left-pad)+'px';
+  spot.style.width = (r.width+pad*2)+'px';
+  spot.style.height = (r.height+pad*2)+'px';
+
+  $('tour-title').innerHTML = step.title;
+  $('tour-body').innerHTML = step.body;
+  $('tour-step').textContent = `${tourI+1} of ${tourSteps.length}`;
+  $('tour-prev').style.visibility = tourI===0 ? 'hidden' : 'visible';
+  $('tour-next').textContent = tourI===tourSteps.length-1 ? 'Done' : 'Next';
+
+  /* place the tip beside the spotlight, clamped to the window */
+  const tip = $('tour-tip');
+  const tw = tip.offsetWidth || 290, th = tip.offsetHeight || 170;
+  let top, left;
+  if(step.pos==='left'){ left = r.left - tw - 18; top = r.top; }
+  else if(step.pos==='below'){ left = r.left + r.width/2 - tw/2; top = r.bottom + 16; }
+  else { left = r.right + 18; top = r.top; }
+  left = Math.max(12, Math.min(left, window.innerWidth - tw - 12));
+  top  = Math.max(12, Math.min(top,  window.innerHeight - th - 12));
+  tip.style.left = left+'px';
+  tip.style.top  = top+'px';
+}
+
+function endTour(){ $('tour').classList.remove('show'); }
+
+$('btn-help').onclick = startTour;
+$('tour-skip').onclick = endTour;
+$('tour-prev').onclick = ()=>{ if(tourI>0){ tourI--; showTourStep(); } };
+$('tour-next').onclick = ()=>{
+  if(tourI < tourSteps.length-1){ tourI++; showTourStep(); } else endTour();
+};
+document.addEventListener('keydown', e=>{
+  if(!$('tour').classList.contains('show')) return;
+  if(e.key==='Escape') endTour();
+  else if(e.key==='ArrowRight') $('tour-next').click();
+  else if(e.key==='ArrowLeft') $('tour-prev').click();
+});
+window.addEventListener('resize', ()=>{ if($('tour').classList.contains('show')) showTourStep(); });
+
+/* first visit: nudge toward the tour instead of auto-hijacking the screen */
+try{
+  if(!localStorage.getItem('vcd-seen')){
+    localStorage.setItem('vcd-seen','1');
+    setTimeout(()=>toast('First time here? Hit “? Help” in the top-left for a quick tour.'), 1800);
+  }
+}catch(e){}
+
 /* ---------------- misc UI ---------------- */
 $('btn-home').onclick = ()=> map.setView(HOME.center, HOME.zoom);
 $('btn-refresh').onclick = ()=>{
@@ -1902,6 +2181,7 @@ idbGet('parcels').then(saved=>{
 /* start with a friendly default layer on */
 $('cb-parks').click();
 $('cb-parcels').click();
+renderActiveStack();
 </script>
 </body>
 </html>
