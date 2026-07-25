@@ -687,6 +687,31 @@ async function fetchArcGIS(url, {where='1=1', fields='*', bounds=null, limit=200
   return arcgisRequest(url, p, signal);
 }
 
+/* Fetches pages concurrently in small batches instead of one at a time.
+   A single dense viewport can need 8+ pages of 2000 records each - done
+   sequentially that's 8 round-trips (slow, and JSONP has no keep-alive).
+   Batching 4 at a time cuts that to ~2 round-trips. Returns {feats,
+   truncated} - truncated=true means maxPages was hit with no short page
+   seen, i.e. there may be more data than we fetched. Callers must NOT
+   treat a truncated result as full coverage of the requested area. */
+async function fetchPaged(fetchPage, {limit=2000, maxPages=8, batch=4, onProgress}={}){
+  const feats=[]; let pg=0;
+  while(pg<maxPages){
+    const batchOffsets=[];
+    for(let i=0;i<batch && pg<maxPages;i++,pg++) batchOffsets.push(pg*limit);
+    const results = await Promise.all(batchOffsets.map(off=>fetchPage(off)));
+    let shortSeen=false;
+    for(const gj of results){
+      const f=(gj&&gj.features)||[];
+      feats.push(...f);
+      if(f.length<limit) shortSeen=true;
+    }
+    if(onProgress) onProgress(feats.length);
+    if(shortSeen) return {feats, truncated:false};
+  }
+  return {feats, truncated:true};
+}
+
 /* Remembers per-host whether CORS fetch works, so we don't pay a failed
    attempt on every request (big win during bulk downloads). */
 const _corsBlocked = {};
@@ -1252,6 +1277,7 @@ async function refreshLayer(cfg, force){
   const view = map.getBounds();
   const spatial = cfg.bbox || cfg.kind==='overpass' ||
                   (cfg.kind==='parcels' && (band==='grid'||band==='poly'));
+  const padAmt = band==='poly' ? 0.3 : 0.6;
 
   if(cfg.kind==='parcels') $('vl-band').textContent =
     band==='surface'?(z<=12?'Neighborhood blocks · stable county-wide field':'Parcel borders (approx) · one cell per lot — zoom for exact outlines'):
@@ -1276,7 +1302,8 @@ async function refreshLayer(cfg, force){
 
   try{
     let newLayer, stat;
-    const fetchBounds = spatial ? view.pad(0.6) : null;
+    s._truncated = false;
+    const fetchBounds = spatial ? view.pad(padAmt) : null;
     /* same band, still mostly the area we already have? → stay quiet.
        new band, filter change, or a real jump? → the big loader is due. */
     const sameBandPan = s.cache && s.cache.key===key;
@@ -1284,17 +1311,16 @@ async function refreshLayer(cfg, force){
 
     if(cfg.kind==='arcgis'){
       const where = cfg.whereFn ? cfg.whereFn(cfg) : (cfg.where||'1=1');
-      const per = cfg.limit||2000, feats=[];
-      for(let pg=0; pg<(cfg.pages||1); pg++){
-        const gj = await fetchArcGIS(cfg.url,{where, fields:cfg.fields||'*',
-          bounds:cfg.bbox?fetchBounds:null, limit:per, offset:pg*per, signal:sig});
-        feats.push(...(gj.features||[]));
-        if((gj.features||[]).length<per) break;
-      }
+      const per = cfg.limit||2000, maxPages = cfg.pages||1;
+      const {feats, truncated} = await fetchPaged(
+        off=>fetchArcGIS(cfg.url,{where, fields:cfg.fields||'*',
+          bounds:cfg.bbox?fetchBounds:null, limit:per, offset:off, signal:sig}),
+        {limit:per, maxPages, batch:Math.min(4,maxPages)});
       const gjAll = {type:'FeatureCollection', features:feats};
       newLayer = makeGeoJsonLayer(cfg, gjAll);
       s.lastGJ = gjAll;                 // feeds the Insight rail
-      stat = fmtNum(feats.length);
+      stat = fmtNum(feats.length)+(truncated?'+':'');
+      s._truncated = truncated;
     }
     else if(cfg.kind==='parcels'){
       const opt = cfg.controlValue;
@@ -1377,15 +1403,15 @@ async function refreshLayer(cfg, force){
         if(PARCELS_FULL){
           n = PARCELS_FULL.val.length;   // aggregated in buildGrid already
         } else {
-          for(let off=0; off<8000; off+=2000){
-            const gj = await fetchArcGIS(TAXLOTS,{where, fields:'MktTotVal',
-              bounds:fetchBounds, limit:2000, offset:off, maxOffset:0.004, signal:sig});
-            for(const f of (gj.features||[])){
-              const c0=firstCoord(f.geometry);
-              if(c0){ grid.add(c0[0],c0[1],(f.properties&&f.properties.MktTotVal)||0); n++; }
-            }
-            if((gj.features||[]).length<2000) break;
+          const {feats, truncated} = await fetchPaged(
+            off=>fetchArcGIS(TAXLOTS,{where, fields:'MktTotVal',
+              bounds:fetchBounds, limit:2000, offset:off, maxOffset:0.004, signal:sig}),
+            {limit:2000, maxPages:8, batch:4});
+          for(const f of feats){
+            const c0=firstCoord(f.geometry);
+            if(c0){ grid.add(c0[0],c0[1],(f.properties&&f.properties.MktTotVal)||0); n++; }
           }
+          s._truncated = truncated;
         }
         const cells = grid.finish();
         const rects = cells.map(c=>{
@@ -1404,17 +1430,15 @@ async function refreshLayer(cfg, force){
       else { /* band==='poly' — real parcel outlines */
         if(bigLoadDue) bigLoad(true, 'Loading exact parcel outlines…');
         try{
-          const feats=[];
-          for(let off=0; off<16000; off+=2000){
-            const gj = await fetchArcGIS(TAXLOTS,{where, fields:cfg.fields,
-              bounds:fetchBounds, limit:2000, offset:off,
-              maxOffset: z>=17?0 : z>=16?0.00004 : 0.0001, signal:sig});
-            feats.push(...(gj.features||[]));
-            if(bigLoadDue) bigLoad(true, `Loading exact parcel outlines… ${fmtNum(feats.length)} so far`);
-            if((gj.features||[]).length<2000) break;
-          }
+          const maxOffsetV = z>=17?0 : z>=16?0.00004 : 0.0001;
+          const {feats, truncated} = await fetchPaged(
+            off=>fetchArcGIS(TAXLOTS,{where, fields:cfg.fields,
+              bounds:fetchBounds, limit:2000, offset:off, maxOffset:maxOffsetV, signal:sig}),
+            {limit:2000, maxPages:14, batch:4,
+             onProgress: n=>{ if(bigLoadDue) bigLoad(true, `Loading exact parcel outlines… ${fmtNum(n)} so far`); }});
           newLayer = makeGeoJsonLayer(cfg, {type:'FeatureCollection',features:feats});
-          stat = fmtNum(feats.length)+(feats.length>=16000?'+':'');
+          stat = fmtNum(feats.length)+(truncated?'+ (zoom in for all)':'');
+          s._truncated = truncated;
         } finally { bigLoad(false); }
       }
     }
@@ -1447,7 +1471,8 @@ async function refreshLayer(cfg, force){
     if(s.layer && s.layer!==newLayer && map.hasLayer(s.layer)) map.removeLayer(s.layer);
     if(!map.hasLayer(newLayer)) newLayer.addTo(map);
     s.layer = newLayer;
-    s.cache = {key, bounds:fetchBounds, stat};
+    const cacheBounds = s._truncated ? view : (fetchBounds || view);
+    s.cache = {key, bounds:cacheBounds, stat};
     setStat(cfg.id, stat);
     updateInsights();
   }
