@@ -7,7 +7,7 @@ weather, and more. One HTML file, no build step, no API keys.
 **Proudly built with Claude (claude.ai).**
 
 ## Run it
-Open `vancouver-dashboard.html` in a browser. That's it.
+Open `index.html` in a browser. That's it.
 
 ## Data sources
 - Clark County GIS (`gis.clark.wa.gov` — parcels/taxlots, collisions, parks,
@@ -17,7 +17,7 @@ Open `vancouver-dashboard.html` in a browser. That's it.
 - OpenStreetMap (Overpass API for POIs, Nominatim for search, OSM tiles)
 
 ## Architecture notes
-- Single file: CSS + HTML + JS in `vancouver-dashboard.html`
+- Single file: CSS + HTML + JS in `index.html`
 - ArcGIS fetch with automatic JSONP fallback (county server sends no CORS
   headers, so `file://` use depends on JSONP)
 - Session cache per layer: padded-bbox reuse, toggle off = hide only
